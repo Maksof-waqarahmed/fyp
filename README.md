@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI-Powered Uptime Monitor
 
-## Getting Started
+This project is built with **Next.js** and uses **Better Auth** for authentication.
+It uses **PostgreSQL** for the database and supports social login via **Google** and **GitHub**.
 
-First, run the development server:
+---
+
+## ⚙️ Setup
+
+1. **Clone the repository:**
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd <repository-folder>
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Install dependencies:**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm install
+# or
+npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **Environment variables**
 
-## Learn More
+Create a `.env` file in the project root and define the following variables:
 
-To learn more about Next.js, take a look at the following resources:
+```env
+# PostgreSQL database connection
+DATABASE_URL="postgresql://user:password@localhost:5432/dbname?schema=public"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Next.js environment
+NEXT_PUBLIC_ENV=development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Better Auth secret (random string)
+BETTER_AUTH_SECRET="your-random-secret"
 
-## Deploy on Vercel
+# Better Auth URL (for server callbacks)
+BETTER_AUTH_URL="http://localhost:3000/api/auth"
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Google OAuth credentials
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# GitHub OAuth credentials (optional)
+GITHUB_CLIENT_ID="your-github-client-id"
+GITHUB_CLIENT_SECRET="your-github-client-secret"
+```
+
+> **Note:** Do not commit your `.env` file to version control.
+
+---
+
+## 🛠️ Database Setup
+
+1. **Generate Prisma client:**
+
+```bash
+npx prisma generate
+```
+
+2. **Push schema to the database:**
+
+```bash
+pnpm db:push
+```
+
+This will automatically create your Prisma schema models in the PostgreSQL database.
+
+---
+
+## 🔑 Run the Project
+
+**Development server:**
+
+```bash
+pnpm dev
+# or
+npm run dev
+```
+
+The project will run at: `http://localhost:3000`
+
+---
+
+## 📦 Dependencies
+
+* Next.js
+* Prisma ORM + PostgreSQL
+* Better Auth
+* TailwindCSS (for styling)
+* Lucide React (icons)
+
+---
+
+## 🔗 References
+
+* [Better Auth Documentation](https://docs.better-auth.com/)
+* [Prisma Documentation](https://www.prisma.io/docs/)
+* [Next.js Documentation](https://nextjs.org/docs)
+* [Google OAuth Setup](https://console.cloud.google.com/apis/credentials)
+
+---
