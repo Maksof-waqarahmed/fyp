@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "npx prisma db push"
+    "db:push": "npx prisma db push",
+    "add:ui": "pnpm dlx shadcn@latest add "
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
