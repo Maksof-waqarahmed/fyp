@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "./generated/prisma"
@@ -9,17 +8,20 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String   @id
   name          String
-  email         String
-  emailVerified Boolean   @default(false)
+  email         String   @unique
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  @@unique([email])
+  setting   Setting?
+  sessions  Session[]
+  accounts  Account[]
+  endPoints EndPoint[]
+  projects  Project[]
+
   @@map("user")
 }
 
@@ -69,4 +71,81 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Project {
+  id          String     @id @default(cuid())
+  projectName String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endPoints   EndPoint[]
+
+  @@map("project")
+}
+
+model EndPoint {
+  id            String    @id @default(cuid())
+  name          String
+  url           String
+  checkInterval Int
+  isDeleted     Boolean   @default(false)
+  nextCheckAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  logs          Log[]
+  notifications Notification[]
+
+  @@map("endpoint")
+}
+
+model Setting {
+  id             String  @id @default(cuid())
+  email          String?
+  slackWebhook   String?
+  whatsappNumber String?
+  isActive       Boolean @default(true)
+  userId         String
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@map("setting")
+}
+
+model Log {
+  id           String    @id @default(cuid())
+  status       String
+  httpCode     Int?
+  responseTime Int?
+  errorMessage String?
+  checkedAt    DateTime
+  endPointId   String?
+  endPoint     EndPoint? @relation(fields: [endPointId], references: [id])
+
+  @@map("log")
+}
+
+model Notification {
+  id         String      @id @default(cuid())
+  type       String
+  message    String
+  sentAt     DateTime    @default(now())
+  status     AlertStatus
+  metadata   Json?
+  endPointId String
+  endPoint   EndPoint    @relation(fields: [endPointId], references: [id])
+
+  @@map("notification")
+}
+
+enum AlertStatus {
+  SEND
+  FAIL
 }
