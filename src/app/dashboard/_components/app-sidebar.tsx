@@ -18,6 +18,7 @@ import {
 import { Logo } from "./logo"
 import { NavMain } from "./nav-main"
 import { NavUser } from "./nav-user"
+import { useSession } from "@/lib/auth/auth-client"
 
 // This is sample data.
 const data = {
@@ -54,7 +55,7 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // const { data: session, status } = useSession()
+  const sessionData  = useSession.get().data
 
   return (
     <Sidebar collapsible="icon" {...props}>
