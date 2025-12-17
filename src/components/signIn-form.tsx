@@ -8,7 +8,7 @@ import { Github, Loader2, Chrome, Shield } from "lucide-react"
 import { useCallback, useState } from "react"
 import { signIn } from "@/lib/auth/auth-client"
 
-export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
+export function SigninForm({ className, ...props }: React.ComponentProps<"div">) {
   const [loading, setLoading] = useState(false)
   const [provider, setProvider] = useState<"google" | "github" | null>(null)
 

@@ -1,4 +1,4 @@
-import { LoginForm } from "@/components/login-form"
+import { SigninForm } from "@/components/signIn-form"
 import { BarChart3, Shield, Sparkles, Zap, TrendingUp, Users } from "lucide-react"
 
 export default function LoginPage() {
@@ -102,7 +102,7 @@ export default function LoginPage() {
             <p className="text-muted-foreground">Start monitoring your deployments today</p>
           </div>
 
-          <LoginForm />
+          <SigninForm />
 
           {/* Mobile features - shown only on small screens */}
           <div className="mt-8 p-6 bg-zinc-50 dark:bg-zinc-900 rounded-2xl lg:hidden">
