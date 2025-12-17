@@ -128,15 +128,6 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
-
-          <div className="text-center mt-6">
-            <p className="text-xs text-muted-foreground">
-              Do not have an account?{" "}
-              <a href="#" className="text-foreground font-medium hover:underline underline-offset-4">
-                Sign up for free
-              </a>
-            </p>
-          </div>
         </div>
       </div>
     </div>
