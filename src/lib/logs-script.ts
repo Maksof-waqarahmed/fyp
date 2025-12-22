@@ -121,22 +121,14 @@ export async function getUrlsandRunScript() {
 
     console.log({
       url: endpoint.url,
-
-      // HTTP + latency
       status: httpResult.status,
       statusCode: httpResult.statusCode ?? null,
       responseTime: httpResult.responseTime ?? null,
       reason: httpResult.reason ?? null,
-
-      // DNS
       dnsStatus: dnsResult.dnsStatus,
       ip: dnsResult.ip,
-
-      // SSL
       sslValid: sslResult.sslValid,
       sslExpiry: sslResult.sslExpiry,
-
-      // Content hash
       contentHash: contentResult.hash,
       contentLength: contentResult.length,
     })
