@@ -50,7 +50,6 @@ export function TRPCReactProvider(props: {
                     async headers() {
                         const headers = new Headers(await props.headersPromise);
                         headers.set("x-trpc-source", "nextjs-react");
-                        headers.set("portal", "customer");
                         return headers;
                     },
                 }),

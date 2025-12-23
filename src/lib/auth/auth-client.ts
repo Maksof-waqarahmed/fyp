@@ -5,10 +5,9 @@ export const authClient = createAuthClient({
     plugins: []
 })
 
-export const session = authClient.useSession.get().data;
-
 export const {
     signIn,
     signOut,
     signUp,
+    useSession
 } = authClient;

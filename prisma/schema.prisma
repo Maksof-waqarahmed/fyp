@@ -15,6 +15,7 @@ model User {
   image         String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+  isActive      Boolean    @default(true)
   setting       Setting?
   sessions      Session[]
   accounts      Account[]
@@ -77,6 +78,7 @@ model Project {
   projectName String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  isDeleted   Boolean    @default(false)
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   endPoints   EndPoint[]
@@ -93,8 +95,8 @@ model EndPoint {
   nextCheckAt   DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  date          DateTime?      @db.Date
-  time          DateTime?      @db.Time
+  date          DateTime       @db.Date
+  time          DateTime       @db.Time
   userId        String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   projectId     String?

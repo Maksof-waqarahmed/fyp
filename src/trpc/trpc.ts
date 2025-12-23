@@ -9,7 +9,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import prisma from '@/lib/prisma';
 import { ZodError } from "zod";
-import { session } from '@/lib/auth/auth-client'
+import { ServerSession } from "@/lib/auth-sever";
 
 /**
  * 1. CONTEXT
@@ -23,12 +23,13 @@ import { session } from '@/lib/auth/auth-client'
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers, session: typeof session | null; }) => {
+export const createTRPCContext = async (opts: { headers: Headers, session: ServerSession; }) => {
     const source = opts.headers.get("x-trpc-source") ?? "unknown";
+    const session = opts.session;
 
     console.log(">>> tRPC Request from", source, "by", opts.session?.user?.email);
 
-    return { session: opts.session, prisma };
+    return { session, prisma };
 };
 
 /**
