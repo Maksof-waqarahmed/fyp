@@ -1,8 +1,10 @@
 import { createTRPCRouter } from "../trpc";
-import { createProject } from "./router/endpoints";
+import { dashboardAnalysis } from "./router/dashboard-analysis";
+import { project } from "./router/endpoints";
 
 export const appRouter = createTRPCRouter({
-    project: createProject
+    project,
+    dashboardAnalysis
 })
 
 // export type definition of API

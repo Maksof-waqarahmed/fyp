@@ -2,7 +2,7 @@ import { createTRPCRouter, protectedProcedure } from "@/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-export const createProject = createTRPCRouter({
+export const project = createTRPCRouter({
     create: protectedProcedure.input(
         z.object({
             projectName: z.string().min(2, "Project Name must be gretaer than 2 char")
