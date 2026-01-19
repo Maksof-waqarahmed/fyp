@@ -10,3 +10,8 @@ export const monitorSchema = z.object({
   email: z.string().email().optional(),
   slackWebhook: z.string().optional(),
 });
+
+export const projectSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+});

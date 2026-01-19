@@ -1,5 +1,5 @@
 import { createTRPCRouter } from "../trpc";
-import { createProject } from "./router/create-project";
+import { createProject } from "./router/endpoints";
 
 export const appRouter = createTRPCRouter({
     project: createProject

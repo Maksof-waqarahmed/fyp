@@ -3,18 +3,18 @@ import { createTRPCContext } from "@/trpc";
 import { appRouter } from "@/trpc/api/routes";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
-function setCorsHeaders(res: Response) {
-    res.headers.set("Access-Control-Allow-Origin", "*");
-    res.headers.set("Access-Control-Request-Method", "*");
-    res.headers.set("Access-Control-Allow-Methods", "OPTIONS, GET, POST");
-    res.headers.set("Access-Control-Allow-Headers", "*");
-}
+// function setCorsHeaders(res: Response) {
+//     res.headers.set("Access-Control-Allow-Origin", "*");
+//     res.headers.set("Access-Control-Request-Method", "*");
+//     res.headers.set("Access-Control-Allow-Methods", "OPTIONS, GET, POST");
+//     res.headers.set("Access-Control-Allow-Headers", "*");
+// }
 
-export function OPTIONS() {
-    const response = new Response(null, { status: 204 });
-    setCorsHeaders(response);
-    return response;
-}
+// export function OPTIONS() {
+//     const response = new Response(null, { status: 204 });
+//     setCorsHeaders(response);
+//     return response;
+// }
 
 async function handler(req: Request) {
 
@@ -34,7 +34,7 @@ async function handler(req: Request) {
         },
     });
 
-    setCorsHeaders(response);
+    // setCorsHeaders(response);
     return response;
 }
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Github, Loader2, Chrome, Shield } from "lucide-react"
 import { useCallback, useState } from "react"
-import { signIn } from "@/lib/auth/auth-client"
+import { signIn } from "@/lib/auth-client"
 
 export function SigninForm({ className, ...props }: React.ComponentProps<"div">) {
   const [loading, setLoading] = useState(false)
@@ -18,7 +18,7 @@ export function SigninForm({ className, ...props }: React.ComponentProps<"div">)
       setProvider(selectedProvider)
       await signIn.social({
         provider: selectedProvider,
-        callbackURL: '/',
+        callbackURL: '/dashboard',
       });
       console.log(`[v0] Signing in with ${selectedProvider}`)
     } catch (error) {

@@ -3,6 +3,7 @@
 import {
   Bot,
   Frame,
+  LayoutDashboard,
   Settings2,
   SquareTerminal
 } from "lucide-react"
@@ -17,12 +18,16 @@ import {
 } from "@/components/ui/sidebar"
 import { Logo } from "./logo"
 import { NavMain } from "./nav-main"
-import { NavUser } from "./nav-user"
-import { useSession } from "@/lib/auth/auth-client"
+// import { NavUser } from "./nav-user"
+// import { useSession } from "@/lib/auth-client"
 
-// This is sample data.
 const data = {
   navMain: [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: LayoutDashboard,
+    },
     {
       title: "Monitoring",
       url: "#",
@@ -30,8 +35,8 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "Add URLs",
-          url: "/dashboard/monitoring/add-urls",
+          title: "Create Project",
+          url: "/dashboard/monitoring/create-project",
           icon: Frame,
         },
         {
@@ -55,7 +60,6 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const sessionData  = useSession.get().data
 
   return (
     <Sidebar collapsible="icon" {...props}>

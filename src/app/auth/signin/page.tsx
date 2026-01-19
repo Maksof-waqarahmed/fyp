@@ -1,5 +1,5 @@
-import { SigninForm } from "@/components/signIn-form"
 import { BarChart3, Shield, Sparkles, Zap, TrendingUp, Users } from "lucide-react"
+import { SigninForm } from "./_components/signIn-form"
 
 export default function LoginPage() {
   return (

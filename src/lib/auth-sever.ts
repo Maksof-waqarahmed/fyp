@@ -1,4 +1,4 @@
-import { auth } from "./auth/auth"
+import { auth } from "./auth"
 import { headers } from "next/headers"
 
 export const serverSession = async () => {
