@@ -51,6 +51,11 @@ GITHUB_CLIENT_SECRET="your-github-client-secret"
 > **Note:** Do not commit your `.env` file to version control.
 
 ---
+## Install dependencies:
+
+```bash
+pnpm install
+```
 
 ## 🛠️ Database Setup
 
@@ -76,21 +81,21 @@ This will automatically create your Prisma schema models in the PostgreSQL datab
 
 ```bash
 pnpm dev
-# or
-npm run dev
 ```
 
 The project will run at: `http://localhost:3000`
 
 ---
 
-## 📦 Dependencies
+## 📦 Tech Stack
 
 * Next.js
 * Prisma ORM + PostgreSQL
+* TRPC
 * Better Auth
+* OpenAI API
+* Shadcn UI
 * TailwindCSS (for styling)
-* Lucide React (icons)
 
 ---
 
@@ -99,6 +104,9 @@ The project will run at: `http://localhost:3000`
 * [Better Auth Documentation](https://docs.better-auth.com/)
 * [Prisma Documentation](https://www.prisma.io/docs/)
 * [Next.js Documentation](https://nextjs.org/docs)
+* [TRPC Documentation](https://trpc.io/docs)
 * [Google OAuth Setup](https://console.cloud.google.com/apis/credentials)
+* [Shadcn UI Documentation](https://ui.shadcn.com/docs)
+* [OpenAI API Documentation](https://platform.openai.com/docs)
 
 ---

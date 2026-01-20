@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import tls from 'tls'
 import { URL } from 'url'
 import prisma from './prisma'
+import { DNSStatus, HTTPStatus } from '../../prisma/generated/prisma/enums'
 
 // --------------------
 // 1️⃣ NETWORK ERROR CLASSIFICATION
@@ -62,7 +63,7 @@ async function checkSSL(hostname: string) {
     const socket = tls.connect(443, hostname, { servername: hostname }, () => {
       const cert = socket.getPeerCertificate()
       socket.end()
-      resolve({ sslValid: socket.authorized, sslExpiry: cert.valid_to })
+      resolve({ sslValid: socket.authorized, sslExpiry: cert.valid_to } as { sslValid: boolean, sslExpiry: string })
     })
     socket.on('error', () => resolve({ sslValid: false, sslExpiry: null }))
   })
@@ -84,7 +85,7 @@ async function checkEndpoint(url: string) {
       url,
       statusCode: res.status,
       status: getStatusType(res.status),
-      responseTime: `${responseTime}ms`,
+      responseTime: responseTime,
     }
   } catch (error) {
     return {
@@ -102,35 +103,71 @@ async function checkEndpoint(url: string) {
 // 8️⃣ FULL MONITORING PIPELINE
 // --------------------
 export async function getUrlsandRunScript() {
-  const endPoints = await prisma.endPoint.findMany()
-
-  for (const endpoint of endPoints) {
-    const hostname = new URL(endpoint.url).hostname
-
-    // DNS
-    const dnsResult = await checkDNS(hostname)
-
-    // SSL
-    const sslResult: any = await checkSSL(hostname)
-
-    // HTTP + Latency
-    const httpResult = await checkEndpoint(endpoint.url)
-
-    // Content hash
-    const contentResult = await getContentHash(endpoint.url)
-
-    console.log({
-      url: endpoint.url,
-      status: httpResult.status,
-      statusCode: httpResult.statusCode ?? null,
-      responseTime: httpResult.responseTime ?? null,
-      reason: httpResult.reason ?? null,
-      dnsStatus: dnsResult.dnsStatus,
-      ip: dnsResult.ip,
-      sslValid: sslResult.sslValid,
-      sslExpiry: sslResult.sslExpiry,
-      contentHash: contentResult.hash,
-      contentLength: contentResult.length,
+  try {
+    const endPoints = await prisma.endPoint.findMany({
+      where: {
+        isDeleted: false,
+        nextCheckAt: { lte: new Date() },
+      },
+      select: {
+        id: true,
+        name: true,
+        checkInterval: true,
+        url: true,
+      },
     })
+
+    for (const endpoint of endPoints) {
+      const now = new Date()
+      const hostname = new URL(endpoint.url).hostname
+
+      const [
+        dnsResult,
+        sslResult,
+        httpResult,
+        contentResult,
+      ] = await Promise.all([
+        checkDNS(hostname),
+        checkSSL(hostname),
+        checkEndpoint(endpoint.url),
+        getContentHash(endpoint.url),
+      ])
+
+      const sslExpiry =
+        sslResult?.sslExpiry && !isNaN(new Date(sslResult.sslExpiry).getTime())
+          ? new Date(sslResult.sslExpiry)
+          : null
+
+      const logData = {
+        status: httpResult.status as HTTPStatus,
+        httpCode: httpResult.statusCode ?? null,
+        responseTime: httpResult.responseTime ? Number(httpResult.responseTime) : null,
+        errorMessage: httpResult.reason ?? null,
+        dnsStatus: dnsResult.dnsStatus as DNSStatus,
+        ip: dnsResult.ip ?? null,
+        sslValid: Boolean(sslResult.sslValid),
+        sslExpiry,
+        checkedAt: now,
+        date: now,
+        time: now,
+        endPointId: endpoint.id,
+        contentHash: contentResult.hash ?? null,
+        contentLength: contentResult.length ?? null,
+      }
+
+      await prisma.log.create({ data: logData })
+
+      await prisma.endPoint.update({
+        where: { id: endpoint.id },
+        data: {
+          nextCheckAt: new Date(
+            now.getTime() + Number(endpoint.checkInterval) * 60 * 1000
+          ),
+        },
+      })
+
+    }
+  } catch (error) {
+    console.error("❌ Error checking website:", error)
   }
 }
