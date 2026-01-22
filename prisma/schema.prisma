@@ -110,13 +110,15 @@ model Endpoint {
 }
 
 model Setting {
-  id             String  @id @default(cuid())
-  email          String?
-  slackWebhook   String?
-  whatsappNumber String?
-  isActive       Boolean @default(true)
-  userId         String
-  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String  @id @default(cuid())
+  email               String?
+  slackWebhook        String?
+  slackWebhookIv      String?
+  slackWebhookAuthTag String?
+  whatsappNumber      String?
+  isActive            Boolean @default(true)
+  userId              String
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
   @@map("setting")
