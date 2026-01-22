@@ -24,7 +24,7 @@ export const dashboardAnalysis = createTRPCRouter({
                     where: { userId: ctx.session.user.id },
                 }),
 
-                ctx.prisma.endPoint.count({
+                ctx.prisma.endpoint.count({
                     where: {
                         isDeleted: false,
                         project: { userId: ctx.session.user.id },
@@ -35,7 +35,7 @@ export const dashboardAnalysis = createTRPCRouter({
                     },
                 }),
 
-                ctx.prisma.endPoint.count({
+                ctx.prisma.endpoint.count({
                     where: {
                         isDeleted: false,
                         project: { userId: ctx.session.user.id },
@@ -45,21 +45,21 @@ export const dashboardAnalysis = createTRPCRouter({
                 ctx.prisma.log.count({
                     where: {
                         status: "UP",
-                        endPoint: { project: { userId: ctx.session.user.id } },
+                        endpoint: { project: { userId: ctx.session.user.id } },
                     },
                 }),
 
                 ctx.prisma.log.count({
                     where: {
                         status: "DOWN",
-                        endPoint: { project: { userId: ctx.session.user.id } },
+                        endpoint: { project: { userId: ctx.session.user.id } },
                     },
                 }),
 
                 ctx.prisma.log.count({
                     where: {
                         status: "UP",
-                        endPoint: { project: { userId: ctx.session.user.id } },
+                        endpoint: { project: { userId: ctx.session.user.id } },
                         date: {
                             gte: startOfWeek,
                             lte: now,
@@ -70,7 +70,7 @@ export const dashboardAnalysis = createTRPCRouter({
                 ctx.prisma.log.count({
                     where: {
                         status: "DOWN",
-                        endPoint: { project: { userId: ctx.session.user.id } },
+                        endpoint: { project: { userId: ctx.session.user.id } },
                         date: {
                             gte: startOfWeek,
                             lte: now,

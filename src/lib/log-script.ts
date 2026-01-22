@@ -99,12 +99,9 @@ async function checkEndpoint(url: string) {
   }
 }
 
-// --------------------
-// 8️⃣ FULL MONITORING PIPELINE
-// --------------------
 export async function getUrlsandRunScript() {
   try {
-    const endPoints = await prisma.endPoint.findMany({
+    const endPoints = await prisma.endpoint.findMany({
       where: {
         isDeleted: false,
         nextCheckAt: { lte: new Date() },
@@ -157,7 +154,7 @@ export async function getUrlsandRunScript() {
 
       await prisma.log.create({ data: logData })
 
-      await prisma.endPoint.update({
+      await prisma.endpoint.update({
         where: { id: endpoint.id },
         data: {
           nextCheckAt: new Date(

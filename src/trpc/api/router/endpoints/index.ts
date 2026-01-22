@@ -60,7 +60,7 @@ export const project = createTRPCRouter({
                 nextCheckAt: new Date(Date.now() + Number(ep.checkInterval) * 60 * 1000)
             }));
 
-            return await ctx.prisma.endPoint.createMany({
+            return await ctx.prisma.endpoint.createMany({
                 data: endpointsData,
                 skipDuplicates: true,
             });

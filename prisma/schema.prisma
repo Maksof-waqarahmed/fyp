@@ -8,19 +8,20 @@ datasource db {
 }
 
 model User {
-  id            String     @id
+  id            String   @id
   name          String
-  email         String     @unique
-  emailVerified Boolean    @default(false)
+  email         String   @unique
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  isActive      Boolean    @default(true)
-  setting       Setting?
-  sessions      Session[]
-  accounts      Account[]
-  endPoints     EndPoint[]
-  projects      Project[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  isActive      Boolean  @default(true)
+
+  setting   Setting?
+  sessions  Session[]
+  accounts  Account[]
+  endpoints Endpoint[]
+  projects  Project[]
 
   @@map("user")
 }
@@ -82,16 +83,16 @@ model Project {
   isDeleted   Boolean    @default(false)
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  endPoints   EndPoint[]
+  endpoints   Endpoint[]
 
   @@map("project")
 }
 
-model EndPoint {
+model Endpoint {
   id            String         @id @default(cuid())
   name          String
   url           String
-  checkInterval Int
+  checkInterval Int            @default(5)
   isDeleted     Boolean        @default(false)
   nextCheckAt   DateTime?
   createdAt     DateTime       @default(now())
@@ -122,22 +123,25 @@ model Setting {
 }
 
 model Log {
-  id            String     @id @default(cuid())
-  status        HTTPStatus
-  httpCode      Int?
-  responseTime  Int?
-  errorMessage  String?
-  dnsStatus     DNSStatus
-  ip            String?
-  sslValid      Boolean
-  sslExpiry     DateTime?
-  checkedAt     DateTime   @default(now())
-  date          DateTime   @db.Date
-  time          DateTime   @db.Time
-  contentHash   String?
-  contentLength Int?
-  endPointId    String?
-  endPoint      EndPoint?  @relation(fields: [endPointId], references: [id])
+  id                String      @id @default(cuid())
+  status            HTTPStatus
+  httpCode          Int?
+  responseTime      Int?
+  errorMessage      String?
+  dnsStatus         DNSStatus
+  ip                String?
+  sslValid          Boolean
+  sslExpiry         DateTime?
+  lastStatus        HTTPStatus?
+  consecutiveFails  Int         @default(0)
+  lastAlertedStatus HTTPStatus?
+  checkedAt         DateTime    @default(now())
+  date              DateTime    @db.Date
+  time              DateTime    @db.Time
+  contentHash       String?
+  contentLength     Int?
+  endpointId        String?
+  endpoint          Endpoint?   @relation(fields: [endpointId], references: [id])
 
   @@map("log")
 }
@@ -149,8 +153,8 @@ model Notification {
   sentAt     DateTime    @default(now())
   status     AlertStatus
   metadata   Json?
-  endPointId String
-  endPoint   EndPoint    @relation(fields: [endPointId], references: [id])
+  endpointId String
+  endpoint   Endpoint    @relation(fields: [endpointId], references: [id])
 
   @@map("notification")
 }

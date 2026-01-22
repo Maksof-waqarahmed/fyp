@@ -33,7 +33,7 @@ async function createUrls() {
     const now = new Date()
     try {
         const promises = dummyURLS.map((url, index) =>
-            prisma.endPoint.create({
+            prisma.endpoint.create({
                 data: {
                     name: `Test Endpoint ${index + 1}`,
                     url,
