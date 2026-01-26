@@ -110,6 +110,7 @@ export async function getUrlsandRunScript() {
                     );
 
                 if (shouldSendDownAlert) {
+                    console.log("Sending down alert");
                     if (setting.email) {
                         await sendEmailAlert(
                             setting.email,
@@ -123,9 +124,11 @@ export async function getUrlsandRunScript() {
                             `🔴 ${endpoint.url} is DOWN`
                         );
                     }
+                    consecutiveFails = 0;
                 }
 
                 if (shouldSendRecoveryAlert) {
+                    console.log("Sending recovery alert");
                     if (setting.email) {
                         await sendEmailAlert(
                             setting.email,
@@ -139,6 +142,7 @@ export async function getUrlsandRunScript() {
                             `🟢 ${endpoint.url} is UP again`
                         );
                     }
+                    consecutiveFails = 0;
                 }
             }
 

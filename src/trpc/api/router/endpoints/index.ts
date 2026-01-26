@@ -5,21 +5,28 @@ import { z } from "zod";
 export const project = createTRPCRouter({
     create: protectedProcedure.input(
         z.object({
-            projectName: z.string().min(2, "Project Name must be gretaer than 2 char")
+            projectName: z.string().min(2, "Project Name must be gretaer than 2 char"),
+            description: z.string().optional()
         })
     ).mutation(async ({ ctx, input }) => {
         const userID = ctx.session.user.id;
         try {
-            return await ctx.prisma.project.create({
+            const project = await ctx.prisma.project.create({
                 data: {
                     projectName: input.projectName,
+                    ...(input.description && { description: input.description }),
                     user: {
                         connect: {
                             id: userID
                         }
                     }
-                }
+                },
             })
+
+            return {
+                message: "Project created successfully",
+                data: project
+            }
         } catch (error: unknown) {
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
@@ -35,7 +42,7 @@ export const project = createTRPCRouter({
                     name: z.string().trim().min(2, "Name must be at least 2 characters"),
                     url: z.string().url("Invalid URL"),
                     checkInterval: z.number().int().min(1),
-                    projectID: z.string()
+                    projectID: z.string().min(1, "Project ID is required")
                 })
             ).min(1, "At least one endpoint is required")
 
@@ -60,11 +67,15 @@ export const project = createTRPCRouter({
                 nextCheckAt: new Date(Date.now() + Number(ep.checkInterval) * 60 * 1000)
             }));
 
-            return await ctx.prisma.endpoint.createMany({
+            const endpoint = await ctx.prisma.endpoint.createMany({
                 data: endpointsData,
                 skipDuplicates: true,
             });
 
+            return {
+                message: "Endpoints added successfully",
+                data: endpoint
+            }
         } catch (error: unknown) {
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",

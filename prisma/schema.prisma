@@ -96,7 +96,7 @@ model Endpoint {
   isDeleted         Boolean     @default(false)
   nextCheckAt       DateTime?
   lastStatus        HTTPStatus?
-  consecutiveFails  Int         @default(0)
+  consecutiveFails  Int?         @default(0)
   lastAlertedStatus HTTPStatus?
   lastCheckedAt     DateTime?
   createdAt         DateTime    @default(now())

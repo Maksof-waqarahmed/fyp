@@ -12,14 +12,12 @@ export const userSetting = createTRPCRouter({
             select: {
                 email: true,
                 slackWebhook: true,
-                whatsappNumber: true,
             }
         })
 
         return {
-            email: !!setting?.email,
-            slackWebhook: !!setting?.slackWebhook,
-            whatsappNumber: !!setting?.whatsappNumber,
+            email: setting?.email || "",
+            slackWebhook: setting?.slackWebhook || "",
         }
     }),
 
@@ -28,7 +26,6 @@ export const userSetting = createTRPCRouter({
             z.object({
                 email: z.string().email().optional(),
                 slackWebhook: z.string().url().optional(),
-                whatsappNumber: z.string().min(11).max(15).optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -41,7 +38,6 @@ export const userSetting = createTRPCRouter({
 
             const payload = {
                 ...(input.email && { email: input.email }),
-                ...(input.whatsappNumber && { whatsappNumber: input.whatsappNumber }),
                 ...(encryptedSlack && {
                     slackWebhook: encryptedSlack.encryptedData,
                     slackWebhookIv: encryptedSlack.iv,
@@ -57,6 +53,8 @@ export const userSetting = createTRPCRouter({
                     update: payload,
                     create: { userId, ...payload },
                 });
+
+                return { message: "Setting updated successfully" }
             } catch (error: unknown) {
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
