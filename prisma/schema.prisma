@@ -89,17 +89,22 @@ model Project {
 }
 
 model Endpoint {
-  id            String         @id @default(cuid())
-  name          String
-  url           String
-  checkInterval Int            @default(5)
-  isDeleted     Boolean        @default(false)
-  nextCheckAt   DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  date          DateTime       @db.Date
-  time          DateTime       @db.Time
-  userId        String
+  id                String      @id @default(cuid())
+  name              String
+  url               String
+  checkInterval     Int         @default(5)
+  isDeleted         Boolean     @default(false)
+  nextCheckAt       DateTime?
+  lastStatus        HTTPStatus?
+  consecutiveFails  Int         @default(0)
+  lastAlertedStatus HTTPStatus?
+  lastCheckedAt     DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  date              DateTime    @db.Date
+  time              DateTime    @db.Time
+  userId            String
+
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   projectId     String?
   project       Project?       @relation(fields: [projectId], references: [id])
@@ -125,25 +130,22 @@ model Setting {
 }
 
 model Log {
-  id                String      @id @default(cuid())
-  status            HTTPStatus
-  httpCode          Int?
-  responseTime      Int?
-  errorMessage      String?
-  dnsStatus         DNSStatus
-  ip                String?
-  sslValid          Boolean
-  sslExpiry         DateTime?
-  lastStatus        HTTPStatus?
-  consecutiveFails  Int         @default(0)
-  lastAlertedStatus HTTPStatus?
-  checkedAt         DateTime    @default(now())
-  date              DateTime    @db.Date
-  time              DateTime    @db.Time
-  contentHash       String?
-  contentLength     Int?
-  endpointId        String?
-  endpoint          Endpoint?   @relation(fields: [endpointId], references: [id])
+  id            String     @id @default(cuid())
+  status        HTTPStatus
+  httpCode      Int?
+  responseTime  Int?
+  errorMessage  String?
+  dnsStatus     DNSStatus
+  ip            String?
+  sslValid      Boolean
+  sslExpiry     DateTime?
+  checkedAt     DateTime   @default(now())
+  date          DateTime   @db.Date
+  time          DateTime   @db.Time
+  contentHash   String?
+  contentLength Int?
+  endpointId    String?
+  endpoint      Endpoint?  @relation(fields: [endpointId], references: [id])
 
   @@map("log")
 }

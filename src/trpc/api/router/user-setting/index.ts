@@ -57,10 +57,10 @@ export const userSetting = createTRPCRouter({
                     update: payload,
                     create: { userId, ...payload },
                 });
-            } catch (error: any) {
+            } catch (error: unknown) {
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: error.message ?? "Failed to save settings",
+                    message: error instanceof Error ? error.message : "Unknown error",
                 });
             }
         })

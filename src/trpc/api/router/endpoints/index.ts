@@ -20,10 +20,10 @@ export const project = createTRPCRouter({
                     }
                 }
             })
-        } catch (error: any) {
+        } catch (error: unknown) {
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
-                message: error
+                message: error instanceof Error ? error.message : "Unknown error"
             })
         }
 
@@ -65,10 +65,10 @@ export const project = createTRPCRouter({
                 skipDuplicates: true,
             });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             throw new TRPCError({
                 code: "INTERNAL_SERVER_ERROR",
-                message: error
+                message: error instanceof Error ? error.message : "Unknown error"
             })
         }
     })

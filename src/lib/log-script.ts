@@ -1,27 +1,38 @@
-import dns from 'dns/promises'
 import crypto from 'crypto'
+import dns from 'dns/promises'
 import tls from 'tls'
-import { URL } from 'url'
-import prisma from './prisma'
-import { DNSStatus, HTTPStatus } from '../../prisma/generated/prisma/enums'
 
 // --------------------
 // 1️⃣ NETWORK ERROR CLASSIFICATION
 // --------------------
-function classifyError(error: any) {
-  if (error.name === 'AbortError') return 'TIMEOUT'
-  if (error.code === 'ENOTFOUND') return 'DNS_NOT_FOUND'
-  if (error.code === 'ECONNREFUSED') return 'CONNECTION_REFUSED'
-  if (error.code === 'ECONNRESET') return 'CONNECTION_RESET'
-  if (error.code === 'ETIMEDOUT') return 'TIMEOUT'
-  if (error.message?.includes('SSL')) return 'SSL_ERROR'
-  return 'NETWORK_ERROR'
+
+type NetworkErrorType =
+  | "TIMEOUT"
+  | "DNS_NOT_FOUND"
+  | "CONNECTION_REFUSED"
+  | "CONNECTION_RESET"
+  | "SSL_ERROR"
+  | "NETWORK_ERROR";
+
+export function classifyError(error: unknown): NetworkErrorType {
+  if (error instanceof Error) {
+    const err = error as Error & { code?: string };
+
+    if (err.name === "AbortError") return "TIMEOUT";
+    if (err.code === "ENOTFOUND") return "DNS_NOT_FOUND";
+    if (err.code === "ECONNREFUSED") return "CONNECTION_REFUSED";
+    if (err.code === "ECONNRESET") return "CONNECTION_RESET";
+    if (err.code === "ETIMEDOUT") return "TIMEOUT";
+    if (err.message.toLowerCase().includes("ssl")) return "SSL_ERROR";
+  }
+
+  return "NETWORK_ERROR";
 }
 
 // --------------------
 // 2️⃣ DNS CHECK
 // --------------------
-async function checkDNS(hostname: string) {
+export async function checkDNS(hostname: string) {
   try {
     const result = await dns.lookup(hostname)
     return { dnsStatus: 'RESOLVED', ip: result.address }
@@ -33,7 +44,7 @@ async function checkDNS(hostname: string) {
 // --------------------
 // 3️⃣ HTTP STATUS CLASSIFICATION
 // --------------------
-function getStatusType(status: number) {
+export function getStatusType(status: number) {
   if (status >= 200 && status < 300) return 'UP'
   if (status >= 300 && status < 400) return 'REDIRECT'
   if (status >= 400 && status < 500) return 'CLIENT_ERROR'
@@ -44,7 +55,7 @@ function getStatusType(status: number) {
 // --------------------
 // 5️⃣ CONTENT HASH CHECK (LEVEL 2)
 // --------------------
-async function getContentHash(url: string) {
+export async function getContentHash(url: string) {
   try {
     const res = await fetch(url)
     const html = await res.text()
@@ -58,12 +69,18 @@ async function getContentHash(url: string) {
 // --------------------
 // 6️⃣ SSL CHECK (LEVEL 3)
 // --------------------
-async function checkSSL(hostname: string) {
-  return new Promise((resolve) => {
+
+type SSLCheckResult = {
+  sslValid: boolean;
+  sslExpiry: string | null;
+};
+
+export async function checkSSL(hostname: string): Promise<SSLCheckResult> {
+  return new Promise<SSLCheckResult>((resolve) => {
     const socket = tls.connect(443, hostname, { servername: hostname }, () => {
       const cert = socket.getPeerCertificate()
       socket.end()
-      resolve({ sslValid: socket.authorized, sslExpiry: cert.valid_to } as { sslValid: boolean, sslExpiry: string })
+      resolve({ sslValid: socket.authorized, sslExpiry: cert.valid_to ?? null })
     })
     socket.on('error', () => resolve({ sslValid: false, sslExpiry: null }))
   })
@@ -72,7 +89,7 @@ async function checkSSL(hostname: string) {
 // --------------------
 // 7️⃣ ENDPOINT CHECK (HTTP + TIMEOUT)
 // --------------------
-async function checkEndpoint(url: string) {
+export async function checkEndpoint(url: string) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 8000)
 
@@ -96,75 +113,5 @@ async function checkEndpoint(url: string) {
     }
   } finally {
     clearTimeout(timeout)
-  }
-}
-
-export async function getUrlsandRunScript() {
-  try {
-    const endPoints = await prisma.endpoint.findMany({
-      where: {
-        isDeleted: false,
-        nextCheckAt: { lte: new Date() },
-      },
-      select: {
-        id: true,
-        name: true,
-        checkInterval: true,
-        url: true,
-      },
-    })
-
-    for (const endpoint of endPoints) {
-      const now = new Date()
-      const hostname = new URL(endpoint.url).hostname
-
-      const [
-        dnsResult,
-        sslResult,
-        httpResult,
-        contentResult,
-      ] = await Promise.all([
-        checkDNS(hostname),
-        checkSSL(hostname),
-        checkEndpoint(endpoint.url),
-        getContentHash(endpoint.url),
-      ])
-
-      const sslExpiry =
-        sslResult?.sslExpiry && !isNaN(new Date(sslResult.sslExpiry).getTime())
-          ? new Date(sslResult.sslExpiry)
-          : null
-
-      const logData = {
-        status: httpResult.status as HTTPStatus,
-        httpCode: httpResult.statusCode ?? null,
-        responseTime: httpResult.responseTime ? Number(httpResult.responseTime) : null,
-        errorMessage: httpResult.reason ?? null,
-        dnsStatus: dnsResult.dnsStatus as DNSStatus,
-        ip: dnsResult.ip ?? null,
-        sslValid: Boolean(sslResult.sslValid),
-        sslExpiry,
-        checkedAt: now,
-        date: now,
-        time: now,
-        endPointId: endpoint.id,
-        contentHash: contentResult.hash ?? null,
-        contentLength: contentResult.length ?? null,
-      }
-
-      await prisma.log.create({ data: logData })
-
-      await prisma.endpoint.update({
-        where: { id: endpoint.id },
-        data: {
-          nextCheckAt: new Date(
-            now.getTime() + Number(endpoint.checkInterval) * 60 * 1000
-          ),
-        },
-      })
-
-    }
-  } catch (error) {
-    console.error("❌ Error checking website:", error)
   }
 }
