@@ -64,7 +64,7 @@ export const project = createTRPCRouter({
                 userId: ctx.session.user.id,
                 date: todayDate,
                 time: now,
-                nextCheckAt: new Date(Date.now() + Number(ep.checkInterval) * 60 * 1000)
+                nextCheckAt: new Date(Date.now() + Math.max(Number(ep.checkInterval), 1) * 60 * 60 * 1000)
             }));
 
             const endpoint = await ctx.prisma.endpoint.createMany({

@@ -92,12 +92,10 @@ model Endpoint {
   id                String      @id @default(cuid())
   name              String
   url               String
-  checkInterval     Int         @default(5)
+  checkInterval     Int         @default(1)
   isDeleted         Boolean     @default(false)
   nextCheckAt       DateTime?
   lastStatus        HTTPStatus?
-  consecutiveFails  Int?         @default(0)
-  lastAlertedStatus HTTPStatus?
   lastCheckedAt     DateTime?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt

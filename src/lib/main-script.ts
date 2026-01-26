@@ -17,8 +17,6 @@ export async function getUrlsandRunScript() {
                 url: true,
                 checkInterval: true,
                 userId: true,
-                consecutiveFails: true,
-                lastAlertedStatus: true,
             },
         });
 
@@ -39,20 +37,6 @@ export async function getUrlsandRunScript() {
                     !isNaN(new Date(sslResult.sslExpiry).getTime())
                     ? new Date(sslResult.sslExpiry)
                     : null;
-
-            const isFail =
-                httpResult.status === "DOWN" ||
-                httpResult.status === "UNKNOWN";
-
-            const isUp = httpResult.status === "UP";
-
-            let consecutiveFails = endpoint.consecutiveFails ?? 0;
-
-            if (isFail) {
-                consecutiveFails += 1;
-            } else if (isUp) {
-                consecutiveFails = 0;
-            }
 
             await prisma.log.create({
                 data: {
@@ -75,13 +59,16 @@ export async function getUrlsandRunScript() {
                 },
             });
 
-            const shouldSendDownAlert =
-                consecutiveFails >= 3 &&
-                endpoint.lastAlertedStatus !== "DOWN";
-
-            const shouldSendRecoveryAlert =
-                isUp &&
-                endpoint.lastAlertedStatus === "DOWN";
+            await prisma.endpoint.update({
+                where: { id: endpoint.id },
+                data: {
+                    nextCheckAt: new Date(
+                        now.getTime() + Math.max(endpoint.checkInterval, 1) * 60 * 60 * 1000
+                    ),
+                    lastCheckedAt: now,
+                    lastStatus: httpResult.status as HTTPStatus,
+                },
+            });
 
             const setting = await prisma.setting.findUnique({
                 where: {
@@ -109,62 +96,19 @@ export async function getUrlsandRunScript() {
                         setting.slackWebhookAuthTag!
                     );
 
-                if (shouldSendDownAlert) {
+                if (httpResult.status === "DOWN") {
+
                     console.log("Sending down alert");
+
                     if (setting.email) {
-                        await sendEmailAlert(
-                            setting.email,
-                            `🔴 ${endpoint.url} is DOWN`
-                        );
+                        await sendEmailAlert(setting.email, `🔴 ${endpoint.url} is DOWN`);
                     }
 
                     if (hasSlack && slackWebhook) {
-                        await sendSlackAlert(
-                            slackWebhook,
-                            `🔴 ${endpoint.url} is DOWN`
-                        );
+                        await sendSlackAlert(slackWebhook, `🔴 ${endpoint.url} is DOWN`);
                     }
-                    consecutiveFails = 0;
-                }
-
-                if (shouldSendRecoveryAlert) {
-                    console.log("Sending recovery alert");
-                    if (setting.email) {
-                        await sendEmailAlert(
-                            setting.email,
-                            `🟢 ${endpoint.url} is UP again`
-                        );
-                    }
-
-                    if (hasSlack && slackWebhook) {
-                        await sendSlackAlert(
-                            slackWebhook,
-                            `🟢 ${endpoint.url} is UP again`
-                        );
-                    }
-                    consecutiveFails = 0;
                 }
             }
-
-            await prisma.endpoint.update({
-                where: { id: endpoint.id },
-                data: {
-                    nextCheckAt: new Date(
-                        now.getTime() + endpoint.checkInterval * 60 * 1000
-                    ),
-                    consecutiveFails,
-                    lastCheckedAt: now,
-                    lastStatus: httpResult.status as HTTPStatus,
-
-                    ...(shouldSendDownAlert && {
-                        lastAlertedStatus: "DOWN",
-                    }),
-
-                    ...(shouldSendRecoveryAlert && {
-                        lastAlertedStatus: "UP",
-                    }),
-                },
-            });
         }
     } catch (error) {
         console.error("❌ Error checking websites:", error);
