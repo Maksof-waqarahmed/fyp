@@ -35,6 +35,39 @@ export const project = createTRPCRouter({
         }
 
     }),
+    getAllProjects: protectedProcedure.input(z.object({
+        page: z.string().default("1"),
+        limit: z.string().default("10"),
+    })).query(async ({ ctx, input }) => {
+        const { page, limit } = input;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const projects = await ctx.prisma.project.findMany({
+            where: {
+                userId: ctx.session.user.id
+            },
+            select: {
+                id: true,
+                projectName: true,
+                description: true,
+                createdAt: true,
+            },
+            skip,
+            take: parseInt(limit),
+        })
+
+        const totalProjects = await ctx.prisma.project.count({
+            where: {
+                userId: ctx.session.user.id
+            }
+        })
+        return {
+            projects,
+            totalProjects,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(totalProjects / parseInt(limit)),
+        }
+    }),
     addEndPoints: protectedProcedure.input(
         z.object({
             endPoints: z.array(
