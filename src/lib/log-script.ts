@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import dns from 'dns/promises'
 import tls from 'tls'
+import { HTTPStatus } from '../../prisma/generated/prisma/enums';
 
 // --------------------
 // 1️⃣ NETWORK ERROR CLASSIFICATION
@@ -32,7 +33,10 @@ export function classifyError(error: unknown): NetworkErrorType {
 // --------------------
 // 2️⃣ DNS CHECK
 // --------------------
-export async function checkDNS(hostname: string) {
+
+export type DNSResult = { dnsStatus: "RESOLVED"; ip: string } | { dnsStatus: "FAILED"; ip: null };
+
+export async function checkDNS(hostname: string): Promise<DNSResult> {
   try {
     const result = await dns.lookup(hostname)
     return { dnsStatus: 'RESOLVED', ip: result.address }
@@ -44,7 +48,10 @@ export async function checkDNS(hostname: string) {
 // --------------------
 // 3️⃣ HTTP STATUS CLASSIFICATION
 // --------------------
-export function getStatusType(status: number) {
+
+type Status = 'UP' | 'REDIRECT' | 'CLIENT_ERROR' | 'DOWN' | 'UNKNOWN';
+
+export function getStatusType(status: number): Status {
   if (status >= 200 && status < 300) return 'UP'
   if (status >= 300 && status < 400) return 'REDIRECT'
   if (status >= 400 && status < 500) return 'CLIENT_ERROR'
@@ -55,7 +62,10 @@ export function getStatusType(status: number) {
 // --------------------
 // 5️⃣ CONTENT HASH CHECK (LEVEL 2)
 // --------------------
-export async function getContentHash(url: string) {
+
+export type ContentResult = { hash: string; length: number } | { hash: null; length: 0 };
+
+export async function getContentHash(url: string): Promise<ContentResult> {
   try {
     const res = await fetch(url)
     const html = await res.text()
@@ -70,7 +80,7 @@ export async function getContentHash(url: string) {
 // 6️⃣ SSL CHECK (LEVEL 3)
 // --------------------
 
-type SSLCheckResult = {
+export type SSLCheckResult = {
   sslValid: boolean;
   sslExpiry: string | null;
 };
@@ -89,29 +99,46 @@ export async function checkSSL(hostname: string): Promise<SSLCheckResult> {
 // --------------------
 // 7️⃣ ENDPOINT CHECK (HTTP + TIMEOUT)
 // --------------------
-export async function checkEndpoint(url: string) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 8000)
+
+export type EndpointUp = {
+  url: string;
+  status: HTTPStatus;
+  statusCode: number;
+  responseTime: number;
+};
+
+export type EndpointDown = {
+  url: string;
+  status: HTTPStatus;
+  responseTime: null;
+  reason: NetworkErrorType;
+};
+
+export type EndPointType = EndpointUp | EndpointDown;
+
+export async function checkEndpoint(url: string): Promise<EndPointType> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const start = Date.now()
-    const res = await fetch(url, { signal: controller.signal })
-    const responseTime = Date.now() - start
+    const start = Date.now();
+    const res = await fetch(url, { signal: controller.signal });
+    const responseTime = Date.now() - start;
 
     return {
       url,
-      statusCode: res.status,
       status: getStatusType(res.status),
-      responseTime: responseTime,
-    }
+      statusCode: res.status,
+      responseTime,
+    };
   } catch (error) {
     return {
       url,
-      status: 'DOWN',
-      reason: classifyError(error),
+      status: "DOWN",
       responseTime: null,
-    }
+      reason: classifyError(error),
+    };
   } finally {
-    clearTimeout(timeout)
+    clearTimeout(timeout);
   }
 }
