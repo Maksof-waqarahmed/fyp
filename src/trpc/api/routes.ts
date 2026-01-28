@@ -1,13 +1,14 @@
 import { createTRPCRouter } from "../trpc";
 import { dashboardAnalysis } from "./router/dashboard-analysis";
-import { project } from "./router/endpoints";
+import { endpoint } from "./router/endPoint";
+import { project } from "./router/project";
 import { userSetting } from "./router/user-setting";
 
 export const appRouter = createTRPCRouter({
     project,
+    endpoint,
     dashboardAnalysis,
-    userSetting
+    userSetting,
 })
 
-// export type definition of API
 export type AppRouter = typeof appRouter;
