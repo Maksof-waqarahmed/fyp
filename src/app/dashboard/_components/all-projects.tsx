@@ -17,10 +17,13 @@ interface AllProjectsProps {
   totalPages: number;
   totalProjects: number;
   page: number;
-  limit: number;
 }
 
-export function AllProjects({ allProject, totalPages, totalProjects, page, limit }: AllProjectsProps) {
+export function AllProjects({ allProject, totalPages, page }: AllProjectsProps) {
+
+  const changePage = (page: number) => {
+    console.log(page);
+  };
   return (
     <div className="w-full">
       <h1 className="text-3xl font-bold tracking-tight">All Projects</h1>
@@ -70,7 +73,7 @@ export function AllProjects({ allProject, totalPages, totalProjects, page, limit
         </Table>
 
         <div className="mt-4">
-          {/* <Pagination totalPages={totalPages} page={page} /> */}
+          <Pagination page={page} totalPages={totalPages} onPageChange={changePage} />
         </div>
       </div>
     </div>

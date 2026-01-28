@@ -1,16 +1,18 @@
 'use client'
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { toast } from 'sonner';
-import { projectSchema } from '@/types';
-import { AllProjects } from './all-projects';
+import { Input } from '@/components/ui/input';
 import { api } from '@/trpc/trpc-server/react';
+import { projectSchema } from '@/types';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import z from 'zod';
+import { AllProjects } from './all-projects';
+;
 
 export type Project = {
   id: string;
@@ -25,12 +27,12 @@ interface CreateProjectProps {
     totalPages: number;
     totalProjects: number;
     page: number;
-    limit: number;
   };
 }
 
 const CreateProject = ({ data }: CreateProjectProps) => {
   const [showForm, setShowForm] = useState(data.projects.length > 0);
+  const router = useRouter();
 
   const { mutateAsync: createProjectMutation, isPending } = api.project.create.useMutation({
     onError: (error) => console.error('API error:', error),
@@ -45,6 +47,7 @@ const CreateProject = ({ data }: CreateProjectProps) => {
     await createProjectMutation({ ...values });
     toast.success('Project Created Successfully');
     form.reset();
+    router.refresh();
   }
 
   return (
@@ -98,14 +101,12 @@ const CreateProject = ({ data }: CreateProjectProps) => {
             </form>
           </Form>
 
-          {/* Always show table below form */}
           <div className="mt-8">
             <AllProjects
               allProject={data.projects}
               totalPages={data.totalPages}
               totalProjects={data.totalProjects}
               page={data.page}
-              limit={data.limit}
             />
           </div>
         </>
