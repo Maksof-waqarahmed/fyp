@@ -1,6 +1,7 @@
 import { createTRPCRouter } from "../trpc";
 import { dashboardAnalysis } from "./router/dashboard-analysis";
 import { endpoint } from "./router/endPoint";
+import { logs } from "./router/log";
 import { project } from "./router/project";
 import { userSetting } from "./router/user-setting";
 
@@ -9,6 +10,7 @@ export const appRouter = createTRPCRouter({
     endpoint,
     dashboardAnalysis,
     userSetting,
+    logs
 })
 
 export type AppRouter = typeof appRouter;
