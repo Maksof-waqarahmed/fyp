@@ -14,7 +14,7 @@ export default async function CreateProjectPage() {
       </div>
 
       <div className="w-full">
-        <CreateProject data={projects || []} />
+        {/* <CreateProject data={[]} /> */}
       </div>
     </div>
   )
