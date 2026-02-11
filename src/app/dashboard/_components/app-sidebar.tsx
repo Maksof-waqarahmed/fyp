@@ -66,15 +66,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <Logo />
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
+      <SidebarContent className="bg-zinc-950">
+        <div className=" h-full">
+          <div className="absolute top-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+          <NavMain items={data.navMain} />
+        </div>
       </SidebarContent>
-      <SidebarFooter>
-        {/* {
+      {/* <SidebarFooter> */}
+      {/* {
           session &&
           <NavUser user={session?.user} />
         } */}
-      </SidebarFooter>
+      {/* </SidebarFooter> */}
       <SidebarRail />
     </Sidebar>
   )
