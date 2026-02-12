@@ -12,26 +12,24 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import z from 'zod';
 import { AllProjects } from './all-projects';
-;
 
-export type Project = {
+export interface Project {
   id: string;
+  createdAt: Date;
+  updatedAt: Date;
   projectName: string;
   description: string | null;
-  createdAt: Date;
-};
-
-interface CreateProjectProps {
-  data: {
-    projects: Project[];
-    totalPages: number;
-    totalProjects: number;
-    page: number;
-  };
 }
 
-const CreateProject = ({ data }: CreateProjectProps) => {
-  const [showForm, setShowForm] = useState(data.projects.length > 0);
+export interface ProjectsResponse {
+  message: string;
+  data: Project[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+const CreateProject = ({ data, page, total, totalPages}: ProjectsResponse) => {
+  const [showForm, setShowForm] = useState(data.length !== 0);
   const router = useRouter();
 
   const { mutateAsync: createProjectMutation, isPending } = api.project.create.useMutation({
@@ -52,7 +50,7 @@ const CreateProject = ({ data }: CreateProjectProps) => {
 
   return (
     <>
-      {data.projects.length === 0 && !showForm && (
+      {data.length === 0 && !showForm && (
         <EmptyDemo onClickCreate={() => setShowForm(true)} />
       )}
 
@@ -103,10 +101,10 @@ const CreateProject = ({ data }: CreateProjectProps) => {
 
           <div className="mt-8">
             <AllProjects
-              allProject={data.projects}
-              totalPages={data.totalPages}
-              totalProjects={data.totalProjects}
-              page={data.page}
+              allProject={data}
+              totalPages={totalPages}
+              totalProjects={total}
+              page={page}
             />
           </div>
         </>
