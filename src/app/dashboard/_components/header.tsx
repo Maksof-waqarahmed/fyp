@@ -17,7 +17,7 @@ const Header = async () => {
                         className="mr-2 data-[orientation=vertical]:h-8"
                     />
                     <div className="flex items-end justify-end gap-6 w-full">
-                        <div className="flex items-center gap-3">
+                        <div className="flex w-full justify-between items-center gap-3">
                             <div>
                                 <h1 className="text-lg font-semibold">Welcome back, <span className='text-primary font-bold'>{userName}</span></h1>
                                 <p className="text-xs text-muted-foreground">Have a productive day</p>

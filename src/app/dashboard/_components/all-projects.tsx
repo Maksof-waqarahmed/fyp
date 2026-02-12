@@ -11,6 +11,7 @@ import {
 import { CircleChevronRight, SquarePen, Trash2 } from "lucide-react";
 import { Project } from "./create-project";
 import { Pagination } from "./pagination";
+import { Input } from "@/components/ui/input";
 
 interface AllProjectsProps {
   allProject: Project[];
@@ -28,49 +29,119 @@ export function AllProjects({ allProject, totalPages, page }: AllProjectsProps) 
     <div className="w-full">
       <h1 className="text-3xl font-bold tracking-tight">All Projects</h1>
 
-      <Card className="mt-4 p-4">
-        <CardTitle>Filter</CardTitle>
+      <Card className="mt-4 p-3 px-6 rounded-sm gap-2 shadow-sm border bg-white">
+        <CardTitle className="mb-2 text-lg font-semibold">
+          Filter
+        </CardTitle>
+
+        <div className="flex flex-col lg:flex-row gap-4 items-end">
+
+          {/* Project Name */}
+          <div className="flex flex-col w-full ">
+            <label className="text-sm font-medium mb-1 text-muted-foreground">
+              Project Name
+            </label>
+            <Input
+              type="text"
+              placeholder="Search by project name..."
+            />
+          </div>
+
+          {/* From Date */}
+          <div className="flex flex-col w-full ">
+            <label className="text-sm font-medium mb-1 text-muted-foreground">
+              From Date
+            </label>
+            <Input type="date" />
+          </div>
+
+          {/* To Date */}
+          <div className="flex flex-col w-full ">
+            <label className="text-sm font-medium mb-1 text-muted-foreground">
+              To Date
+            </label>
+            <Input type="date" />
+          </div>
+        </div>
+        {/* Buttons */}
+        <div className="flex justify-end mt-3">
+          <div className="flex gap-3">
+            <Button>
+              Apply
+            </Button>
+            <Button variant="outline">
+              Reset
+            </Button>
+          </div>
+        </div>
       </Card>
 
+
       <div className="mt-4">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Created Date</TableHead>
-              <TableHead>Actions</TableHead>
+        <Table className="w-full overflow-hidden rounded-sm border bg-white shadow-sm">
+          {/* Header */}
+          <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
+            <TableRow className="border-none">
+              <TableHead className="text-white font-semibold">Name</TableHead>
+              <TableHead className="text-white font-semibold max-w-[500px]">
+                Description
+              </TableHead>
+              <TableHead className="text-white font-semibold">
+                Created Date
+              </TableHead>
+              <TableHead className="text-white font-semibold max-w-[100px]">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
+
+          {/* Body */}
           <TableBody>
             {allProject.length > 0 ? (
               allProject.map((project) => (
-                <TableRow key={project.id}>
-                  <TableCell>{project.projectName}</TableCell>
-                  <TableCell>{project.description || "N/A"}</TableCell>
-                  <TableCell>{new Date(project.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="space-x-3">
-                    <Button size="sm" variant="outline">
-                      <Trash2 />
+                <TableRow
+                  key={project.id}
+                  className="transition-colors hover:bg-muted/50"
+                >
+                  <TableCell className="font-medium">
+                    {project.projectName}
+                  </TableCell>
+
+                  {/* Description with max width + ellipsis */}
+                  <TableCell className="max-w-[500px] truncate text-muted-foreground">
+                    {project.description || "N/A"}
+                  </TableCell>
+
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(project.createdAt).toLocaleDateString()}
+                  </TableCell>
+
+                  <TableCell className="text-right space-x-2 w-[100px]">
+                    <Button size="icon" variant="ghost">
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="outline">
-                      <SquarePen />
+                    <Button size="icon" variant="ghost">
+                      <SquarePen className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="outline">
-                      <CircleChevronRight />
+                    <Button size="icon" variant="ghost">
+                      <CircleChevronRight className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
-              <tr>
-                <td colSpan={4} className="text-center py-8 text-muted-foreground">
+              <TableRow>
+                <TableCell
+                  colSpan={4}
+                  className="text-center py-12 text-muted-foreground"
+                >
                   No projects created yet. Start by creating your first project!
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table>
+
 
         <div className="mt-4">
           <Pagination page={page} totalPages={totalPages} onPageChange={changePage} />
