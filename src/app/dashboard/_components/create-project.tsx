@@ -28,8 +28,8 @@ export interface ProjectsResponse {
   page: number;
   totalPages: number;
 }
-const CreateProject = ({ data, page, total, totalPages}: ProjectsResponse) => {
-  const [showForm, setShowForm] = useState(data.length !== 0);
+const CreateProject = ({ data, page, total, totalPages }: ProjectsResponse) => {
+  const [showForm, setShowForm] = useState([].length !== 0);
   const router = useRouter();
 
   const { mutateAsync: createProjectMutation, isPending } = api.project.create.useMutation({
@@ -50,16 +50,21 @@ const CreateProject = ({ data, page, total, totalPages}: ProjectsResponse) => {
 
   return (
     <>
-      {data.length === 0 && !showForm && (
+      {[].length === 0 && !showForm && (
         <EmptyDemo onClickCreate={() => setShowForm(true)} />
       )}
 
       {showForm && (
         <>
+          <div className='pb-4'>
+            <h1 className="text-3xl font-bold tracking-tight">Create Project</h1>
+            <p className="text-muted-foreground">
+              Create a new project to start monitoring your websites and APIs for uptime, availability, and performance.
+            </p>
+          </div>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              <Card className="gap-0 py-5">
-                <CardHeader />
+              <Card className="gap-0 py-3 rounded-sm">
                 <CardContent>
                   <div className="grid gap-5 md:grid-cols-2">
                     <FormField
@@ -67,7 +72,7 @@ const CreateProject = ({ data, page, total, totalPages}: ProjectsResponse) => {
                       name="projectName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Name</FormLabel>
+                          <FormLabel className='text-muted-foreground'>Name</FormLabel>
                           <FormControl>
                             <Input placeholder="Project Name" {...field} />
                           </FormControl>
@@ -80,7 +85,7 @@ const CreateProject = ({ data, page, total, totalPages}: ProjectsResponse) => {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Description</FormLabel>
+                          <FormLabel className='text-muted-foreground'>Description</FormLabel>
                           <FormControl>
                             <Input placeholder="Project Description" {...field} />
                           </FormControl>
@@ -89,7 +94,7 @@ const CreateProject = ({ data, page, total, totalPages}: ProjectsResponse) => {
                       )}
                     />
                   </div>
-                  <div className="flex gap-4 mt-6">
+                  <div className="flex w-full gap-4 mt-4 justify-end">
                     <Button type="submit" disabled={isPending}>
                       {isPending ? 'Creating...' : 'Create Project'}
                     </Button>

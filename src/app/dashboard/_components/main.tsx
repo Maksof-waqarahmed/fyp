@@ -10,7 +10,7 @@ const Main = async () => {
     const profile = session?.user.image;
     const userEmail = session?.user.email;
     return (
-        <main className="px-6 py-8">
+        <main className="px-6 py-8 ">
             <div className="mb-8">
                 <div className="flex items-center gap-6 mb-6">
                     <div className="relative">
@@ -35,7 +35,7 @@ const Main = async () => {
             </div>
 
             <Cards />
-            <RecentActivity />
+            {/* <RecentActivity /> */}
         </main>
     )
 }
