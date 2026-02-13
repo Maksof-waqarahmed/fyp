@@ -38,7 +38,7 @@ export const project = createTRPCRouter({
     getAllProjects: protectedProcedure.input(
         z.object({
             page: z.number().int().min(1).default(1),
-            limit: z.number().int().min(1).max(100).default(5),
+            limit: z.number().int().min(1).max(100).default(2),
         })
     ).query(async ({ ctx, input }) => {
         const { page, limit } = input;

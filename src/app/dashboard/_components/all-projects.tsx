@@ -12,6 +12,9 @@ import { CircleChevronRight, SquarePen, Trash2 } from "lucide-react";
 import { Project } from "./create-project";
 import { Pagination } from "./pagination";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 interface AllProjectsProps {
   allProject: Project[];
@@ -21,10 +24,15 @@ interface AllProjectsProps {
 }
 
 export function AllProjects({ allProject, totalPages, page }: AllProjectsProps) {
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<any>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+
 
   const changePage = (page: number) => {
     console.log(page);
   };
+  console.log({ page, totalPages })
   return (
     <div className="w-full">
       <h1 className="text-3xl font-bold tracking-tight">All Projects</h1>
@@ -117,10 +125,13 @@ export function AllProjects({ allProject, totalPages, page }: AllProjectsProps) 
                   </TableCell>
 
                   <TableCell className="text-right space-x-2 w-[100px]">
-                    <Button size="icon" variant="ghost">
+                    <Button size="icon" variant="ghost" onClick={() => {
+                      setIsDeleteOpen(true)
+                    }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="ghost">
+
+                    <Button size="icon" variant="ghost" onClick={() => setIsEditOpen(true)}>
                       <SquarePen className="h-4 w-4" />
                     </Button>
                     <Button size="icon" variant="ghost">
@@ -146,6 +157,64 @@ export function AllProjects({ allProject, totalPages, page }: AllProjectsProps) 
         <div className="mt-4">
           <Pagination page={page} totalPages={totalPages} onPageChange={changePage} />
         </div>
+
+        <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Delete Project</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete{" "}
+                <span className="font-semibold">
+                  {selectedProject?.projectName}
+                </span>
+                ?
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>
+                Cancel
+              </Button>
+
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  // delete logic yahan
+                  setIsDeleteOpen(false)
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Project</DialogTitle>
+            </DialogHeader>
+
+            <Field>
+              <FieldLabel htmlFor="input-field-username">Name</FieldLabel>
+              <Input placeholder="Project Name" />
+
+              <FieldLabel htmlFor="input-field-description">Description</FieldLabel>
+              <Input placeholder="Project Description" />
+            </Field>
+
+            <div className="flex justify-end gap-3">
+              <Button type="submit">
+                Update Project
+              </Button>
+              <Button onClick={() => setIsEditOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+
       </div>
     </div>
   );

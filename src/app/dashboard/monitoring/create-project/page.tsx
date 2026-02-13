@@ -3,7 +3,7 @@ import CreateProject from "../../_components/create-project";
 
 
 export default async function CreateProjectPage() {
-  const projects = await api.project.getAllProjects({ page: 1, limit: 5 });
+  const projects = await api.project.getAllProjects({ page: 1, limit: 3 });
   return (
     <div className="space-y-6 w-full">
 
