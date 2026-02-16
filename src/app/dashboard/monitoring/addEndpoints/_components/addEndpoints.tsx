@@ -36,6 +36,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
     onSuccess: () => {
       toast.success('Endpoints added successfully');
       router.refresh();
+      setIsEditEndPoints(false);
     },
 
   });
@@ -59,6 +60,8 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
     await addEndPoints(values);
 
     form.reset({
+      projectID: project.id,
+      projectName: project.projectName,
       endPoints: [{ name: "", url: "", checkInterval: 1 }],
     });
   }
@@ -144,98 +147,109 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
             </TableBody>
           </Table>
         )}
+        {
+          isEditEndPoints && (
+            <Dialog open={true} onOpenChange={(open) => {
+              setIsEditEndPoints(open);
+              if (!open) {
+                form.reset({
+                  projectID: project.id,
+                  projectName: project.projectName,
+                  endPoints: [{ name: "", url: "", checkInterval: 1 }],
+                });
+              }
+            }} >
+              <DialogContent className="px-6 ">
+                <DialogHeader>
+                  <DialogTitle>Create Endpoint</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <Card className="gap-0 py-3 rounded-sm ">
+                      <CardContent className="md:px-6 px-3">
+                        <div className="grid gap-5 md:grid-cols-2">
+                          <FormField
+                            control={form.control}
+                            name="projectName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-muted-foreground">Project Name</FormLabel>
+                                <FormControl>
+                                  <Input {...field} readOnly />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
-        <Dialog open={isEditEndPoints} onOpenChange={setIsEditEndPoints} >
-          <DialogContent className="px-6 ">
-            <DialogHeader>
-              <DialogTitle>Create Endpoint</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <Card className="gap-0 py-3 rounded-sm ">
-                  <CardContent className="md:px-6 px-3">
-                    <div className="grid gap-5 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="projectName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-muted-foreground">Project Name</FormLabel>
-                            <FormControl>
-                              <Input {...field} readOnly />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                        {/* Endpoints Form */}
+                        <ScrollArea className="h-[270px] overflow-hidden">
+                          <div className="space-y-3 mt-4">
+                            {fields.map((fieldItem, index) => (
+                              <div key={fieldItem.id} className="flex md:flex-row flex-col gap-3 md:items-end md:border-0 border-b">
+                                <FormField
+                                  control={form.control}
+                                  name={`endPoints.${index}.name`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Name</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="Endpoint Name" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`endPoints.${index}.url`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>URL</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="https://example.com" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`endPoints.${index}.checkInterval`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Check Interval (hour)</FormLabel>
+                                      <FormControl>
+                                        <Input type="number" min={1} step={1} {...field} placeholder="Interval" onChange={(e) => field.onChange(Number(e.target.value))} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <div className="max-sm:w-full max-sm:flex justify-center mb-2">
+                                  <button type="button" className="mt-2 rounded-full bg-red-600 md:w-7 w-16 h-7 flex items-center justify-center" onClick={() => remove(index)}>
+                                    <Trash2 className="h-4 w-4 text-white" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
 
-                    {/* Endpoints Form */}
-                    <ScrollArea className="h-[270px] overflow-hidden">
-                      <div className="space-y-3 mt-4">
-                        {fields.map((fieldItem, index) => (
-                          <div key={fieldItem.id} className="flex md:flex-row flex-col gap-3 md:items-end md:border-0 border-b">
-                            <FormField
-                              control={form.control}
-                              name={`endPoints.${index}.name`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Name</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} placeholder="Endpoint Name" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`endPoints.${index}.url`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>URL</FormLabel>
-                                  <FormControl>
-                                    <Input {...field} placeholder="https://example.com" />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name={`endPoints.${index}.checkInterval`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Check Interval (hour)</FormLabel>
-                                  <FormControl>
-                                    <Input type="number" min={1} step={1} {...field} placeholder="Interval" onChange={(e) => field.onChange(Number(e.target.value))} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <div className="max-sm:w-full max-sm:flex justify-center mb-2">
-                              <button type="button" className="mt-2 rounded-full bg-red-600 md:w-7 w-16 h-7 flex items-center justify-center" onClick={() => remove(index)}>
-                                <Trash2 className="h-4 w-4 text-white" />
-                              </button>
-                            </div>
                           </div>
-                        ))}
-
-                      </div>
-                    </ScrollArea>
-                    <div className="flex w-full gap-3 mt-6 justify-end">
-                      <Button type="button" onClick={() => append({ name: "", url: "", checkInterval: 1 })}>
-                        Add Endpoint
-                      </Button>
-                      <Button type="submit">Update Project</Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+                        </ScrollArea>
+                        <div className="flex w-full gap-3 mt-6 justify-end">
+                          <Button type="button" onClick={() => append({ name: "", url: "", checkInterval: 1 })}>
+                            Add Endpoint
+                          </Button>
+                          <Button type="submit">Update Project</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          )}
       </div>
     </div>
   );
