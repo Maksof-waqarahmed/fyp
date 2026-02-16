@@ -1,10 +1,12 @@
+import { ServerSession, serverSession } from '@/lib/auth-sever'
+import { api } from '@/trpc/trpc-server/server'
 import { Mail } from 'lucide-react'
 import Image from 'next/image'
 import Cards from './cards'
-import RecentActivity from './recent-activity'
-import { ServerSession, serverSession } from '@/lib/auth-sever'
+import TerminalComp from './terminal'
 
 const Main = async () => {
+    // const { data: recentLogs } = await api.logs.getRecentLogs({ limit: 5 })
     const session: ServerSession = await serverSession();
     const userName = session?.user.name || "Guest";
     const profile = session?.user.image;
@@ -35,7 +37,7 @@ const Main = async () => {
             </div>
 
             <Cards />
-            {/* <RecentActivity /> */}
+            {/* <TerminalComp data={recentLogs || []} /> */}
         </main>
     )
 }

@@ -1,10 +1,10 @@
 'use client'
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { api } from '@/trpc/trpc-server/react';
-import { projectSchema } from '@/types';
+import { projectSchema } from '@/schemas/project.schema';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -29,7 +29,7 @@ export interface ProjectsResponse {
   totalPages: number;
 }
 const CreateProject = ({ data, page, total, totalPages }: ProjectsResponse) => {
-  const [showForm, setShowForm] = useState([].length !== 0);
+  const [showForm, setShowForm] = useState(data.length !== 0);
   const router = useRouter();
 
   const { mutateAsync: createProjectMutation, isPending } = api.project.create.useMutation({
@@ -50,7 +50,7 @@ const CreateProject = ({ data, page, total, totalPages }: ProjectsResponse) => {
 
   return (
     <>
-      {[].length === 0 && !showForm && (
+      {data.length === 0 && !showForm && (
         <EmptyDemo onClickCreate={() => setShowForm(true)} />
       )}
 

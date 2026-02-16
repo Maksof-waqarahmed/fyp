@@ -91,6 +91,17 @@ export const project = createTRPCRouter({
                 isDeleted: false
             },
             include: {
+                endpoints: {
+                    select: {
+                        id: true,
+                        createdAt: true,
+                        checkInterval: true,
+                        lastCheckedAt: true,
+                        lastStatus: true,
+                        name: true,
+                        url: true
+                    }
+                },
                 _count: {
                     select: {
                         endpoints: {

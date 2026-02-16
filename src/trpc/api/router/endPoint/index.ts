@@ -4,58 +4,72 @@ import { z } from "zod";
 
 export const endpoint = createTRPCRouter({
 
-    addEndPoints: protectedProcedure.input(
-        z.object({
-            projectID: z.string().min(1, "Project ID is required"),
-            endPoints: z.array(
-                z.object({
-                    name: z.string().trim().min(2, "Name must be at least 2 characters"),
-                    url: z.string().url("Invalid URL"),
-                    checkInterval: z.number().int().min(1),
-                })
-            ).min(1, "At least one endpoint is required")
-        })
-    ).mutation(async ({ ctx, input }) => {
+    addEndPoints: protectedProcedure
+        .input(
+            z.object({
+                projectID: z.string().min(1),
+                endPoints: z.array(
+                    z.object({
+                        name: z.string().trim().min(2),
+                        url: z.string().url(),
+                        checkInterval: z.number().int().min(1),
+                    })
+                ).min(1),
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            // console.log("Adding endpoints for project:", input);
+            const projectExists = await ctx.prisma.project.findFirst({
+                where: {
+                    id: input.projectID,
+                    userId: ctx.session.user.id,
+                    isDeleted: false,
+                },
+            });
 
-        const projectExists = await ctx.prisma.project.findFirst({
-            where: { id: input.projectID, userId: ctx.session.user.id, isDeleted: false },
-        });
-        if (!projectExists) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid project ID' });
+            if (!projectExists)
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "Invalid project ID",
+                });
 
-        const now = new Date();
-        const todayDate = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate()
-        );
+            const existingEndpoints = await ctx.prisma.endpoint.findMany({
+                where: {
+                    projectId: input.projectID,
+                    isDeleted: false,
+                },
+                select: { url: true },
+            });
 
-        try {
-            const endpointsData = input.endPoints.map((ep) => ({
-                name: ep.name,
-                url: ep.url,
-                checkInterval: ep.checkInterval,
-                projectId: input.projectID,
-                userId: ctx.session.user.id,
-                date: todayDate,
-                time: now,
-                nextCheckAt: new Date(Date.now() + Math.max(Number(ep.checkInterval), 1) * 60 * 60 * 1000)
-            }));
+            const existingUrls = new Set(existingEndpoints.map((e) => e.url));
+
+            const newEndpoints = input.endPoints
+                .filter((ep) => !existingUrls.has(ep.url))
+                .map((ep) => ({
+                    name: ep.name,
+                    url: ep.url,
+                    checkInterval: ep.checkInterval,
+                    projectId: input.projectID,
+                    nextCheckAt: new Date(
+                        Date.now() + ep.checkInterval * 60 * 60 * 1000
+                    ),
+                }));
+
+            if (newEndpoints.length === 0) {
+                throw new TRPCError({
+                    code: "BAD_REQUEST",
+                    message: "All endpoints already exist in this project",
+                });
+            }
 
             await ctx.prisma.endpoint.createMany({
-                data: endpointsData,
-                skipDuplicates: true,
+                data: newEndpoints,
             });
 
             return {
-                message: "Endpoints added successfully"
-            }
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error"
-            })
-        }
-    }),
+                message: "New endpoints added successfully",
+            };
+        }),
 
     getAllEndPoints: protectedProcedure.input(
         z.object({
@@ -74,14 +88,14 @@ export const endpoint = createTRPCRouter({
         const skip = (page - 1) * limit;
 
         const endpoints = await ctx.prisma.endpoint.findMany({
-            where: { projectId: projectID, userId: ctx.session.user.id, isDeleted: false },
+            where: { projectId: projectID, isDeleted: false },
             skip,
             take: limit,
             orderBy: { createdAt: 'desc' },
         });
 
         const totalEndpoints = await ctx.prisma.endpoint.count({
-            where: { projectId: projectID, userId: ctx.session.user.id, isDeleted: false },
+            where: { projectId: projectID, isDeleted: false },
         });
 
         const totalPages = Math.ceil(totalEndpoints / limit);
@@ -103,7 +117,6 @@ export const endpoint = createTRPCRouter({
         const endpoint = await ctx.prisma.endpoint.findFirst({
             where: {
                 id: input.endpointID,
-                userId: ctx.session.user.id,
                 isDeleted: false
             },
         });
@@ -134,7 +147,6 @@ export const endpoint = createTRPCRouter({
         const existingEndpoint = await ctx.prisma.endpoint.findFirst({
             where: {
                 id: endpointID,
-                userId: ctx.session.user.id,
                 isDeleted: false
             },
         });
@@ -181,7 +193,6 @@ export const endpoint = createTRPCRouter({
         const existingEndpoint = await ctx.prisma.endpoint.findFirst({
             where: {
                 id: input.endpointID,
-                userId: ctx.session.user.id,
                 isDeleted: false
             },
         });

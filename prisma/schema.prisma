@@ -17,11 +17,10 @@ model User {
   updatedAt     DateTime @updatedAt
   isActive      Boolean  @default(true)
 
-  setting   Setting?
-  sessions  Session[]
-  accounts  Account[]
-  endpoints Endpoint[]
-  projects  Project[]
+  setting  Setting?
+  sessions Session[]
+  accounts Account[]
+  projects Project[]
 
   @@map("user")
 }
@@ -89,26 +88,23 @@ model Project {
 }
 
 model Endpoint {
-  id            String      @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String
   url           String
-  checkInterval Int         @default(1)
-  isDeleted     Boolean     @default(false)
+  checkInterval Int            @default(1)
+  isDeleted     Boolean        @default(false)
   nextCheckAt   DateTime?
   lastStatus    HTTPStatus?
   lastCheckedAt DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  date          DateTime    @db.Date
-  time          DateTime    @db.Time
-  userId        String
-
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId     String?
-  project       Project?       @relation(fields: [projectId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  projectId     String
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   logs          Log[]
   notifications Notification[]
 
+  @@unique([projectId, url])
+  @@index([projectId])
   @@map("endpoint")
 }
 
@@ -138,13 +134,12 @@ model Log {
   sslValid      Boolean
   sslExpiry     DateTime?
   checkedAt     DateTime   @default(now())
-  date          DateTime   @db.Date
-  time          DateTime   @db.Time
   contentHash   String?
   contentLength Int?
-  endpointId    String?
-  endpoint      Endpoint?  @relation(fields: [endpointId], references: [id])
+  endpointId    String
+  endpoint      Endpoint   @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
+  @@index([endpointId, checkedAt, status, dnsStatus])
   @@map("log")
 }
 
@@ -156,8 +151,9 @@ model Notification {
   status     AlertStatus
   metadata   Json?
   endpointId String
-  endpoint   Endpoint    @relation(fields: [endpointId], references: [id])
+  endpoint   Endpoint    @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
+  @@index([endpointId])
   @@map("notification")
 }
 
