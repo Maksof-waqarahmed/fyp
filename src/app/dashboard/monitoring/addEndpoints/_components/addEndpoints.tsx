@@ -14,9 +14,9 @@ import z from "zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { api } from "@/trpc/trpc-server/react";
 import { useRouter } from "next/navigation";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { History, Loader2, LoaderCircle, SquarePen, Trash2, Waypoints } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface EndPointsFormProps {
@@ -28,6 +28,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
   const router = useRouter();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isEditEndPoints, setIsEditEndPoints] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const { mutateAsync: addEndPoints } = api.endpoint.addEndPoints.useMutation({
     onError: (error) => {
@@ -73,28 +74,54 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
       </div>
       {/* Project Info Card */}
       <Card className="border shadow-sm rounded-lg">
-        <CardContent className="space-y-1 md-:px-6 px-3">
-          <div className="flex md:flex-row flex-col gap-5">
-            <div className="p-3 bg-zinc-700/60 rounded-full text-white">
-              <p>
-                <span className="font-semibold text-lg">Created At:</span>{" "}
-                {new Date(project.createdAt).toLocaleString()}
-              </p>
+        <CardContent className="space-y-1 md:px-6 px-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+
+            <div className="flex items-center gap-4 p-5 rounded-2xl 
+                  bg-white/5 backdrop-blur-md 
+                  border border-white/10 shadow-lg">
+              <div className="p-3 rounded-xl bg-indigo-500/20 text-indigo-400">
+                <History />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Created At</p>
+                <p className="text-base font-semibold">
+                  {new Date(project.createdAt).toLocaleString()}
+                </p>
+              </div>
             </div>
-            <div className="p-3 bg-zinc-500/60 rounded-full text-white">
-              <p>
-                <span className="font-semibold text-lg">Updated At:</span>{" "}
-                {new Date(project.updatedAt).toLocaleString()}
-              </p>
+
+            <div className="flex items-center gap-4 p-5 rounded-2xl 
+                  bg-white/5 backdrop-blur-md 
+                  border border-white/10 shadow-lg">
+              <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <LoaderCircle />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Updated At</p>
+                <p className="text-base font-semibold">
+                  {new Date(project.updatedAt).toLocaleString()}
+                </p>
+              </div>
             </div>
-            <div className="p-3 bg-zinc-400/55 rounded-full text-white">
-              <p>
-                <span className="font-semibold text-lg">Endpoints Count:</span>{" "}
-                {project._count.endpoints}
-              </p>
+
+            <div className="flex items-center gap-4 p-5 rounded-2xl 
+                  bg-white/5 backdrop-blur-md 
+                  border border-white/10 shadow-lg">
+              <div className="p-3 rounded-xl bg-pink-500/20 text-pink-400">
+                <Waypoints />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Endpoints</p>
+                <p className="text-xl font-bold">
+                  {project._count.endpoints}
+                </p>
+              </div>
             </div>
+
           </div>
-          <div className="w-full flex justify-end">
+
+          <div className="w-full flex justify-end mt-3">
             <Button className="cursor-pointer" onClick={() => {
               setSelectedProject(project);
               setIsEditEndPoints(true);
@@ -114,14 +141,14 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
           <p className="text-muted-foreground">No endpoints added yet.</p>
         ) : (
           <Table className="w-full border rounded-md shadow-sm overflow-hidden">
-            <TableHeader className="bg-gray-100">
+            <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>URL</TableHead>
-                <TableHead>Check Interval</TableHead>
-                <TableHead>Last Status</TableHead>
-                <TableHead>Last Checked</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-white font-semibold max-w-[500px]">Name</TableHead>
+                <TableHead className="text-white font-semibold">URL</TableHead>
+                <TableHead className="text-white font-semibold">Check Interval</TableHead>
+                <TableHead className="text-white font-semibold">Last Status</TableHead>
+                <TableHead className="text-white font-semibold">Last Checked</TableHead>
+                <TableHead className="text-white font-semibold max-w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -135,17 +162,61 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                     {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "-"}
                   </TableCell>
                   <TableCell className="flex gap-2">
-                    <Button size="icon" variant="outline">
-                      ✏️
+                    <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
+                      size="icon"
+                      variant="ghost"
+                    >
+                      <SquarePen className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="destructive">
-                      🗑️
+                    <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setSelectedProject(project);
+                        setIsDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Delete Project</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to delete{" "}
+                    <span className="font-semibold">
+                      {selectedProject?.projectName}
+                    </span>
+                    ?
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsDeleteOpen(false);
+                      setSelectedProject(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                  >
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Delete
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </Table>
+
         )}
         {
           isEditEndPoints && (
