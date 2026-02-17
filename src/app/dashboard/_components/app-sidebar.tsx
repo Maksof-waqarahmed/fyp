@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import {
   Bot,
@@ -18,8 +18,9 @@ import {
 } from "@/components/ui/sidebar"
 import { Logo } from "./logo"
 import { NavMain } from "./nav-main"
-// import { NavUser } from "./nav-user"
-// import { useSession } from "@/lib/auth-client"
+import { NavUser } from "./nav-user"
+import { useSession } from "@/lib/auth-client"
+
 
 const data = {
   navMain: [
@@ -45,8 +46,8 @@ const data = {
           icon: SquareTerminal,
         },
         {
-          title: "URLS",
-          url: "/dashboard/monitoring/allURLs",
+          title: "All Endpoints",
+          url: "/dashboard/monitoring/allEndPoints",
           icon: Settings2,
         },
       ],
@@ -61,6 +62,9 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
+  const session = useSession()
+  const currentUser = session?.data?.user
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="bg-zinc-950">
@@ -72,12 +76,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <NavMain items={data.navMain} />
         </div>
       </SidebarContent>
-      {/* <SidebarFooter> */}
-      {/* {
+      <SidebarFooter>
+        {
           session &&
-          <NavUser user={session?.user} />
-        } */}
-      {/* </SidebarFooter> */}
+          <NavUser user={currentUser} />
+        }
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
