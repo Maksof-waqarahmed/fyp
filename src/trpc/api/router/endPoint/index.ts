@@ -73,29 +73,75 @@ export const endpoint = createTRPCRouter({
 
     getAllEndPoints: protectedProcedure.input(
         z.object({
-            projectID: z.string().min(1, "Project ID is required"),
+            // projectID: z.string().min(1, "Project ID is required"),
             page: z.number().int().min(1).default(1),
             limit: z.number().int().min(1).max(100).default(10),
         })
     ).query(async ({ ctx, input }) => {
-        const { projectID, page, limit } = input;
+        const { page, limit } = input;
 
-        const projectExists = await ctx.prisma.project.findFirst({
-            where: { id: projectID, userId: ctx.session.user.id, isDeleted: false },
-        });
-        if (!projectExists) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid project ID' });
+        // const projectExists = await ctx.prisma.project.findFirst({
+        //     where: { id: projectID, userId: ctx.session.user.id, isDeleted: false },
+        // });
+        // if (!projectExists) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid project ID' });
 
         const skip = (page - 1) * limit;
 
         const endpoints = await ctx.prisma.endpoint.findMany({
-            where: { projectId: projectID, isDeleted: false },
+            where: { isDeleted: false },
+            select: {
+                id: true,
+                name: true,
+                url: true,
+                checkInterval: true,
+                nextCheckAt: true,
+                createdAt: true,
+                updatedAt: true,
+                lastStatus: true,
+                lastCheckedAt: true,
+                project: {
+                    select: {
+                        projectName: true,
+                        description: true,
+                        id: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    },
+                },
+                notifications: {
+                    select: {
+                        id: true,
+                        type: true,
+                        message: true,
+                        sentAt: true,
+                        status: true,
+                        metadata: true,
+                    },
+                },
+                logs: {
+                    select: {
+                        id: true,
+                        status: true,
+                        responseTime: true,
+                        checkedAt: true,
+                        errorMessage: true,
+                        httpCode: true,
+                        sslExpiry: true,
+                        sslValid: true,
+                        ip: true,
+                        dnsStatus: true,
+                        contentHash: true,
+                        contentLength: true
+                    },
+                },
+            },
             skip,
             take: limit,
             orderBy: { createdAt: 'desc' },
         });
 
         const totalEndpoints = await ctx.prisma.endpoint.count({
-            where: { projectId: projectID, isDeleted: false },
+            where: { isDeleted: false },
         });
 
         const totalPages = Math.ceil(totalEndpoints / limit);
