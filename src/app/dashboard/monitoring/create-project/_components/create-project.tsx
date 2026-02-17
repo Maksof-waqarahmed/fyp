@@ -57,7 +57,7 @@ const CreateProject = ({ data, page, total, totalPages }: ProjectsResponse) => {
       {showForm && (
         <>
           <div className='pb-4'>
-            <h1 className="text-3xl font-bold tracking-tight">Create Project</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Create Project</h1>
             <p className="text-muted-foreground">
               Create a new project to start monitoring your websites and APIs for uptime, availability, and performance.
             </p>

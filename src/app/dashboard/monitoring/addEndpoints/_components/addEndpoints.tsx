@@ -69,7 +69,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold">Project Name: <span className="text-2xl font-semibold cursor-pointer hover:underline text-muted-foreground">{project.projectName}</span></h2>
+        <h2 className="text-2xl font-bold">Project Name: <span className="text-xl font-semibold cursor-pointer hover:underline text-muted-foreground">{project.projectName}</span></h2>
         <p className="text-muted-foreground max-w-[800px] line-clamp-1">{project.description || "No description"}</p>
       </div>
       {/* Project Info Card */}
@@ -136,7 +136,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
 
       {/* Endpoints Table */}
       <div>
-        <h2 className="text-3xl font-bold mb-2">Endpoints Overview</h2>
+        <h2 className="text-2xl font-bold mb-2">Endpoints Overview</h2>
         {project.endpoints.length === 0 ? (
           <p className="text-muted-foreground">No endpoints added yet.</p>
         ) : (
