@@ -232,7 +232,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
             }} >
               <DialogContent className="px-6 ">
                 <DialogHeader>
-                  <DialogTitle>Create Endpoint</DialogTitle>
+                  <DialogTitle>Add Endpoint</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -243,13 +243,10 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                             control={form.control}
                             name="projectName"
                             render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-muted-foreground">Project Name</FormLabel>
-                                <FormControl>
-                                  <Input {...field} readOnly />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
+                              <div className="flex gap-2 items-baseline">
+                                <h2 className="text-base font-semibold">Project Name:</h2>
+                                <p className="text-sm text-muted-foreground">{field.value}</p>
+                              </div>
                             )}
                           />
                         </div>

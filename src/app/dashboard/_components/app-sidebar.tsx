@@ -76,7 +76,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <NavMain items={data.navMain} />
         </div>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="bg-zinc-950">
         {
           session &&
           <NavUser user={currentUser} />
