@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useState } from "react";
 import { History, Loader2, LoaderCircle, SquarePen, Trash2, Waypoints } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface EndPointsFormProps {
   project: Project;
@@ -29,6 +30,17 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isEditEndPoints, setIsEditEndPoints] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
+  const totalPages = Math.ceil(project.endpoints.length / pageSize);
+
+  const paginatedData = project.endpoints.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
 
   const { mutateAsync: addEndPoints } = api.endpoint.addEndPoints.useMutation({
     onError: (error) => {
@@ -140,82 +152,116 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
         {project.endpoints.length === 0 ? (
           <p className="text-muted-foreground">No endpoints added yet.</p>
         ) : (
-          <Table className="w-full border rounded-md shadow-sm overflow-hidden">
-            <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
-              <TableRow>
-                <TableHead className="text-white font-semibold max-w-[500px]">Name</TableHead>
-                <TableHead className="text-white font-semibold">URL</TableHead>
-                <TableHead className="text-white font-semibold">Check Interval</TableHead>
-                <TableHead className="text-white font-semibold">Last Status</TableHead>
-                <TableHead className="text-white font-semibold">Last Checked</TableHead>
-                <TableHead className="text-white font-semibold max-w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {project.endpoints.map((ep) => (
-                <TableRow key={ep.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell>{ep.name}</TableCell>
-                  <TableCell className="truncate max-w-[200px]">{ep.url}</TableCell>
-                  <TableCell>{ep.checkInterval} hour</TableCell>
-                  <TableCell>{ep.lastStatus || "-"}</TableCell>
-                  <TableCell>
-                    {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "-"}
-                  </TableCell>
-                  <TableCell className="flex gap-2">
-                    <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <SquarePen className="h-4 w-4" />
-                    </Button>
-                    <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
-                      size="icon"
-                      variant="ghost"
+          <div>
+            <Table className="w-full border rounded-md shadow-sm overflow-hidden">
+              <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
+                <TableRow>
+                  <TableHead className="text-white font-semibold max-w-[500px]">Name</TableHead>
+                  <TableHead className="text-white font-semibold">URL</TableHead>
+                  <TableHead className="text-white font-semibold">Check Interval</TableHead>
+                  <TableHead className="text-white font-semibold">Last Status</TableHead>
+                  <TableHead className="text-white font-semibold">Last Checked</TableHead>
+                  <TableHead className="text-white font-semibold max-w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedData.map((ep) => (
+                  <TableRow key={ep.id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell>{ep.name}</TableCell>
+                    <TableCell className="truncate max-w-[200px]">{ep.url}</TableCell>
+                    <TableCell>{ep.checkInterval} hour</TableCell>
+                    <TableCell>{ep.lastStatus || "-"}</TableCell>
+                    <TableCell>
+                      {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "-"}
+                    </TableCell>
+                    <TableCell className="flex gap-2">
+                      <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
+                        size="icon"
+                        variant="ghost"
+                      >
+                        <SquarePen className="h-4 w-4" />
+                      </Button>
+                      <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setIsDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Delete Project</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete{" "}
+                      <span className="font-semibold">
+                        {selectedProject?.projectName}
+                      </span>
+                      ?
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      variant="outline"
                       onClick={() => {
-                        setSelectedProject(project);
-                        setIsDeleteOpen(true);
+                        setIsDeleteOpen(false);
+                        setSelectedProject(null);
                       }}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      Cancel
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Delete Project</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete{" "}
-                    <span className="font-semibold">
-                      {selectedProject?.projectName}
-                    </span>
-                    ?
-                  </DialogDescription>
-                </DialogHeader>
 
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsDeleteOpen(false);
-                      setSelectedProject(null);
-                    }}
-                  >
-                    Cancel
-                  </Button>
+                    <Button
+                      variant="destructive"
+                    >
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Delete
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </Table>
 
-                  <Button
-                    variant="destructive"
-                  >
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Delete
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </Table>
+            <Pagination className="mt-4 justify-end">
+              <PaginationContent>
+
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => page > 1 && setPage(page - 1)}
+                    className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      isActive={page === i + 1}
+                      onClick={() => setPage(i + 1)}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => page < totalPages && setPage(page + 1)}
+                    className={page === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+
+              </PaginationContent>
+            </Pagination>
+
+          </div>
 
         )}
         {
