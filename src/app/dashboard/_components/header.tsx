@@ -19,7 +19,7 @@ const Header = async () => {
                     <div className="flex items-end justify-end gap-6 w-full">
                         <div className="flex w-full justify-between items-center gap-3">
                             <div>
-                                <h1 className="text-lg font-semibold">Welcome back, <span className='text-primary font-bold'>{userName}</span></h1>
+                                <h1 className="md:text-lg text-base font-semibold">Welcome back, <span className='text-primary font-bold'>{userName}</span></h1>
                                 <p className="text-xs text-muted-foreground">Have a productive day</p>
                             </div>
                             <div className="h-10 w-10 rounded-full from-primary to-primary/80 flex items-center justify-center overflow-hidden border-2 border-primary">

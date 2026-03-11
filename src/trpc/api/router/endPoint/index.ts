@@ -18,7 +18,6 @@ export const endpoint = createTRPCRouter({
             })
         )
         .mutation(async ({ ctx, input }) => {
-            // console.log("Adding endpoints for project:", input);
             const projectExists = await ctx.prisma.project.findFirst({
                 where: {
                     id: input.projectID,
@@ -56,10 +55,14 @@ export const endpoint = createTRPCRouter({
                 }));
 
             if (newEndpoints.length === 0) {
-                throw new TRPCError({
-                    code: "BAD_REQUEST",
+                // throw new TRPCError({
+                //     code: "BAD_REQUEST",
+                //     message: "All endpoints already exist in this project",
+                // });
+
+                return {
                     message: "All endpoints already exist in this project",
-                });
+                }
             }
 
             await ctx.prisma.endpoint.createMany({

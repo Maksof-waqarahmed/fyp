@@ -91,7 +91,7 @@ export function AllProjects({
 
   return (
     <div className="w-full">
-      <h1 className="text-3xl font-bold tracking-tight">All Projects</h1>
+      <h1 className="text-2xl font-bold tracking-tight">All Projects</h1>
 
       <Card className="mt-4 p-3 px-6 rounded-sm gap-2 shadow-sm border bg-white">
         <CardTitle className="mb-2 text-lg font-semibold">
@@ -130,10 +130,10 @@ export function AllProjects({
         {/* Buttons */}
         <div className="flex justify-end mt-3">
           <div className="flex gap-3">
-            <Button>
+            <Button className="cursor-pointer">
               Apply
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" className="cursor-pointer">
               Reset
             </Button>
           </div>
@@ -182,7 +182,7 @@ export function AllProjects({
 
                   <TableCell className="text-right space-x-2 w-[100px]">
                     {/* DELETE */}
-                    <Button
+                    <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
                       size="icon"
                       variant="ghost"
                       onClick={() => {
@@ -194,7 +194,7 @@ export function AllProjects({
                     </Button>
 
                     {/* EDIT */}
-                    <Button
+                    <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
                       size="icon"
                       variant="ghost"
                       onClick={() => {
@@ -206,7 +206,7 @@ export function AllProjects({
                     </Button>
 
                     <Link href={`/dashboard/monitoring/addEndpoints/${project.id}`}>
-                      <Button size="icon" variant="ghost">
+                      <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out" size="icon" variant="ghost">
                         <CircleChevronRight className="h-4 w-4" />
                       </Button>
                     </Link>

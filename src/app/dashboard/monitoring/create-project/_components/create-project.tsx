@@ -57,7 +57,7 @@ const CreateProject = ({ data, page, total, totalPages }: ProjectsResponse) => {
       {showForm && (
         <>
           <div className='pb-4'>
-            <h1 className="text-3xl font-bold tracking-tight">Create Project</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Create Project</h1>
             <p className="text-muted-foreground">
               Create a new project to start monitoring your websites and APIs for uptime, availability, and performance.
             </p>
@@ -95,7 +95,7 @@ const CreateProject = ({ data, page, total, totalPages }: ProjectsResponse) => {
                     />
                   </div>
                   <div className="flex w-full gap-4 mt-4 justify-end">
-                    <Button type="submit" disabled={isPending}>
+                    <Button className='cursor-pointer' type="submit" disabled={isPending}>
                       {isPending ? 'Creating...' : 'Create Project'}
                     </Button>
                   </div>
@@ -127,7 +127,7 @@ function EmptyDemo({ onClickCreate }: { onClickCreate: () => void }) {
       <p className="text-muted-foreground text-center">
         You haven&apos;t created any projects yet. Get started by creating your first project.
       </p>
-      <Button onClick={onClickCreate}>Create Project</Button>
+      <Button className="cursor-pointer" onClick={onClickCreate}>Create Project</Button>
     </div>
   );
 }

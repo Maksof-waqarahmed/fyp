@@ -14,6 +14,11 @@ import z from "zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { api } from "@/trpc/trpc-server/react";
 import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+import { History, Loader2, LoaderCircle, SquarePen, Trash2, Waypoints } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface EndPointsFormProps {
   project: Project;
@@ -22,6 +27,20 @@ interface EndPointsFormProps {
 export const EndPointsForm = ({ project }: EndPointsFormProps) => {
 
   const router = useRouter();
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isEditEndPoints, setIsEditEndPoints] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
+  const totalPages = Math.ceil(project.endpoints.length / pageSize);
+
+  const paginatedData = project.endpoints.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
 
   const { mutateAsync: addEndPoints } = api.endpoint.addEndPoints.useMutation({
     onError: (error) => {
@@ -30,6 +49,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
     onSuccess: () => {
       toast.success('Endpoints added successfully');
       router.refresh();
+      setIsEditEndPoints(false);
     },
 
   });
@@ -53,159 +73,297 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
     await addEndPoints(values);
 
     form.reset({
+      projectID: project.id,
+      projectName: project.projectName,
       endPoints: [{ name: "", url: "", checkInterval: 1 }],
     });
   }
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold">Project Name: <span className="text-xl font-semibold cursor-pointer hover:underline text-muted-foreground">{project.projectName}</span></h2>
+        <p className="text-muted-foreground max-w-[800px] line-clamp-1">{project.description || "No description"}</p>
+      </div>
       {/* Project Info Card */}
-      <Card className="border shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl">Project Name: {project.projectName}</CardTitle>
-          <CardDescription>Project Description: {project.description || "No description"}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-1">
-          <p>
-            <span className="font-semibold">Created At:</span>{" "}
-            {new Date(project.createdAt).toLocaleString()}
-          </p>
-          <p>
-            <span className="font-semibold">Updated At:</span>{" "}
-            {new Date(project.updatedAt).toLocaleString()}
-          </p>
-          <p>
-            <span className="font-semibold">Endpoints Count:</span>{" "}
-            {project._count.endpoints}
-          </p>
+      <Card className="border shadow-sm rounded-lg">
+        <CardContent className="space-y-1 md:px-6 px-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+
+            <div className="flex items-center gap-4 p-5 rounded-2xl 
+                  bg-white/5 backdrop-blur-md 
+                  border border-white/10 shadow-lg">
+              <div className="p-3 rounded-xl bg-indigo-500/20 text-indigo-400">
+                <History />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Created At</p>
+                <p className="text-base font-semibold">
+                  {new Date(project.createdAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-5 rounded-2xl 
+                  bg-white/5 backdrop-blur-md 
+                  border border-white/10 shadow-lg">
+              <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <LoaderCircle />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Updated At</p>
+                <p className="text-base font-semibold">
+                  {new Date(project.updatedAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-5 rounded-2xl 
+                  bg-white/5 backdrop-blur-md 
+                  border border-white/10 shadow-lg">
+              <div className="p-3 rounded-xl bg-pink-500/20 text-pink-400">
+                <Waypoints />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Endpoints</p>
+                <p className="text-xl font-bold">
+                  {project._count.endpoints}
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="w-full flex justify-end mt-3">
+            <Button className="cursor-pointer" onClick={() => {
+              setSelectedProject(project);
+              setIsEditEndPoints(true);
+            }}>
+              Add Endpoints
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
       <Separator />
 
-      {/* Project Form */}
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <Card className="gap-0 py-3 rounded-sm">
-            <CardContent>
-              <div className="grid gap-5 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="projectName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-muted-foreground">Project Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} readOnly />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Endpoints Form */}
-              <div className="space-y-3 mt-4">
-                {fields.map((fieldItem, index) => (
-                  <div key={fieldItem.id} className="grid gap-3 md:grid-cols-3 items-end">
-                    <FormField
-                      control={form.control}
-                      name={`endPoints.${index}.name`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Endpoint Name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`endPoints.${index}.url`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>URL</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="https://example.com" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`endPoints.${index}.checkInterval`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Check Interval (hour)</FormLabel>
-                          <FormControl>
-                            <Input type="number" min={1} step={1} {...field} placeholder="Interval" onChange={(e) => field.onChange(Number(e.target.value))} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="button" variant="destructive" className="mt-2" onClick={() => remove(index)}>
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" onClick={() => append({ name: "", url: "", checkInterval: 1 })}>
-                  Add Endpoint
-                </Button>
-              </div>
-
-              <div className="flex w-full gap-4 mt-6 justify-end">
-                <Button type="submit">Update Project</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </form>
-      </Form>
-
-      <Separator />
-
       {/* Endpoints Table */}
       <div>
-        <h2 className="text-xl font-semibold mb-2">Endpoints Overview</h2>
+        <h2 className="text-2xl font-bold mb-2">Endpoints Overview</h2>
         {project.endpoints.length === 0 ? (
           <p className="text-muted-foreground">No endpoints added yet.</p>
         ) : (
-          <Table className="w-full border rounded-md shadow-sm overflow-hidden">
-            <TableHeader className="bg-gray-100">
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>URL</TableHead>
-                <TableHead>Check Interval</TableHead>
-                <TableHead>Last Status</TableHead>
-                <TableHead>Last Checked</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {project.endpoints.map((ep) => (
-                <TableRow key={ep.id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell>{ep.name}</TableCell>
-                  <TableCell className="truncate max-w-[200px]">{ep.url}</TableCell>
-                  <TableCell>{ep.checkInterval} hour</TableCell>
-                  <TableCell>{ep.lastStatus || "-"}</TableCell>
-                  <TableCell>
-                    {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "-"}
-                  </TableCell>
-                  <TableCell className="flex gap-2">
-                    <Button size="icon" variant="outline">
-                      ✏️
-                    </Button>
-                    <Button size="icon" variant="destructive">
-                      🗑️
-                    </Button>
-                  </TableCell>
+          <div>
+            <Table className="w-full border rounded-md shadow-sm overflow-hidden">
+              <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
+                <TableRow>
+                  <TableHead className="text-white font-semibold max-w-[500px]">Name</TableHead>
+                  <TableHead className="text-white font-semibold">URL</TableHead>
+                  <TableHead className="text-white font-semibold">Check Interval</TableHead>
+                  <TableHead className="text-white font-semibold">Last Status</TableHead>
+                  <TableHead className="text-white font-semibold">Last Checked</TableHead>
+                  <TableHead className="text-white font-semibold max-w-[100px]">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {paginatedData.map((ep) => (
+                  <TableRow key={ep.id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell>{ep.name}</TableCell>
+                    <TableCell className="truncate max-w-[200px]">{ep.url}</TableCell>
+                    <TableCell>{ep.checkInterval} hour</TableCell>
+                    <TableCell>{ep.lastStatus || "-"}</TableCell>
+                    <TableCell>
+                      {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "-"}
+                    </TableCell>
+                    <TableCell className="flex gap-2">
+                      <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
+                        size="icon"
+                        variant="ghost"
+                      >
+                        <SquarePen className="h-4 w-4" />
+                      </Button>
+                      <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedProject(project);
+                          setIsDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Delete Project</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete{" "}
+                      <span className="font-semibold">
+                        {selectedProject?.projectName}
+                      </span>
+                      ?
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsDeleteOpen(false);
+                        setSelectedProject(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+
+                    <Button
+                      variant="destructive"
+                    >
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Delete
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </Table>
+
+            <Pagination className="mt-4 justify-end">
+              <PaginationContent>
+
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => page > 1 && setPage(page - 1)}
+                    className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      isActive={page === i + 1}
+                      onClick={() => setPage(i + 1)}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => page < totalPages && setPage(page + 1)}
+                    className={page === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+
+              </PaginationContent>
+            </Pagination>
+
+          </div>
+
         )}
+        {
+          isEditEndPoints && (
+            <Dialog open={true} onOpenChange={(open) => {
+              setIsEditEndPoints(open);
+              if (!open) {
+                form.reset({
+                  projectID: project.id,
+                  projectName: project.projectName,
+                  endPoints: [{ name: "", url: "", checkInterval: 1 }],
+                });
+              }
+            }} >
+              <DialogContent className="px-6 ">
+                <DialogHeader>
+                  <DialogTitle>Add Endpoint</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <Card className="gap-0 py-3 rounded-sm ">
+                      <CardContent className="md:px-6 px-3">
+                        <div className="grid gap-5 md:grid-cols-2">
+                          <FormField
+                            control={form.control}
+                            name="projectName"
+                            render={({ field }) => (
+                              <div className="flex gap-2 items-baseline">
+                                <h2 className="text-base font-semibold">Project Name:</h2>
+                                <p className="text-sm text-muted-foreground">{field.value}</p>
+                              </div>
+                            )}
+                          />
+                        </div>
+
+                        {/* Endpoints Form */}
+                        <ScrollArea className="h-[270px] overflow-hidden">
+                          <div className="space-y-3 mt-4">
+                            {fields.map((fieldItem, index) => (
+                              <div key={fieldItem.id} className="flex md:flex-row flex-col gap-3 md:items-end md:border-0 border-b">
+                                <FormField
+                                  control={form.control}
+                                  name={`endPoints.${index}.name`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Name</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="Endpoint Name" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`endPoints.${index}.url`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>URL</FormLabel>
+                                      <FormControl>
+                                        <Input {...field} placeholder="https://example.com" />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`endPoints.${index}.checkInterval`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Check Interval (hour)</FormLabel>
+                                      <FormControl>
+                                        <Input type="number" min={1} step={1} {...field} placeholder="Interval" onChange={(e) => field.onChange(Number(e.target.value))} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <div className="max-sm:w-full max-sm:flex justify-center mb-2">
+                                  <button type="button" className="mt-2 rounded-full bg-red-600 md:w-7 w-16 h-7 flex items-center justify-center" onClick={() => remove(index)}>
+                                    <Trash2 className="h-4 w-4 text-white" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+
+                          </div>
+                        </ScrollArea>
+                        <div className="flex w-full gap-3 mt-6 justify-end">
+                          <Button type="button" onClick={() => append({ name: "", url: "", checkInterval: 1 })}>
+                            Add Endpoint
+                          </Button>
+                          <Button type="submit">Update Project</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          )}
       </div>
     </div>
   );
