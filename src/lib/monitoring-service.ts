@@ -16,8 +16,23 @@ export type EndpointRef = {
     name: string;
     url: string;
     checkInterval: number;
-    userId: string;
+    project: {
+        projectName: string;
+        id: string;
+        user: {
+            id: string;
+            name: string;
+            email: string;
+            setting: {
+                email: string | null;
+                slackWebhook: string | null;
+                slackWebhookIv: string | null;
+                slackWebhookAuthTag: string | null;
+            } | null;
+        };
+    };
 };
+
 
 export class MonitoringService {
     constructor(private prisma: PrismaClient) { }
@@ -26,7 +41,29 @@ export class MonitoringService {
         try {
             return await this.prisma.endpoint.findMany({
                 where: { isDeleted: false, nextCheckAt: { lte: new Date() } },
-                select: { id: true, name: true, url: true, checkInterval: true, userId: true },
+                select: {
+                    id: true, name: true, url: true, checkInterval: true, project: {
+                        select: {
+                            projectName: true,
+                            id: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                    setting: {
+                                        select: {
+                                            email: true,
+                                            slackWebhook: true,
+                                            slackWebhookIv: true,
+                                            slackWebhookAuthTag: true,
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
             });
         } catch (error) {
             console.error("❌ Error fetching endpoints:", error);
@@ -60,8 +97,6 @@ export class MonitoringService {
                 sslValid: sslResult.sslValid,
                 sslExpiry,
                 checkedAt: now,
-                date: now,
-                time: now,
                 contentHash: contentResult.hash,
                 contentLength: contentResult.length || null,
                 endpointId: endpoint.id,
@@ -84,23 +119,6 @@ export class MonitoringService {
             });
         } catch (error) {
             console.error("❌ Error updating endpoint:", error);
-        }
-    }
-
-    async getAlertData(endpoint: EndpointRef) {
-        try {
-            return await this.prisma.setting.findUnique({
-                where: { userId: endpoint.userId },
-                select: {
-                    email: true,
-                    slackWebhook: true,
-                    slackWebhookIv: true,
-                    slackWebhookAuthTag: true,
-                },
-            });
-        } catch (error) {
-            console.error("❌ Error getting alert data:", error);
-            return null;
         }
     }
 

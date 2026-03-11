@@ -23,16 +23,17 @@ export async function runEndpointMonitoring() {
                 await monitoringService.createLogs(dnsResult, sslResult, httpResult, contentResult, endpoint);
                 await monitoringService.updateEndPoints(endpoint, httpResult);
 
-                const setting = await monitoringService.getAlertData(endpoint);
-                if (!setting) continue;
+                const setting = endpoint.project.user.setting;
 
-                const hasSlack = !!setting.slackWebhook && !!setting.slackWebhookIv && !!setting.slackWebhookAuthTag;
+                const hasSlack = !!setting?.slackWebhook && !!setting.slackWebhookIv && !!setting.slackWebhookAuthTag;
                 const slackWebhook = hasSlack ? decrypt(setting.slackWebhook!, setting.slackWebhookIv!, setting.slackWebhookAuthTag!) : null;
 
                 if (httpResult.status === "DOWN") {
                     console.log(`🔴 ${endpoint.url} is DOWN — sending alerts`);
 
-                    if (setting.email) {
+                    
+
+                    if (setting?.email) {
                         const emailResult = await sendEmailAlert(setting.email, `🔴 ${endpoint.url} is DOWN`);
                         await monitoringService.createNotification("EMAIL", `🔴 ${endpoint.url} is DOWN`, endpoint, emailResult);
                     }
