@@ -70,8 +70,8 @@ export function AllProjects({
       },
     });
 
-  const changePage = (page: number) => {
-    console.log("Page:", page);
+  const changePage = (newPage: number) => {
+    router.push(`/dashboard/monitoring/create-project?page=${newPage}`);
   };
 
   const handleDelete = async () => {
