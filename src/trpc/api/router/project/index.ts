@@ -79,6 +79,30 @@ export const project = createTRPCRouter({
         }
     }),
 
+    getRecentProjects: protectedProcedure.query(async ({ ctx }) => {
+        const projects = await ctx.prisma.project.findMany({
+            where: {
+                userId: ctx.session.user.id,
+                isDeleted: false
+            },
+            select: {
+                id: true,
+                projectName: true,
+                description: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+            take: 7,
+            orderBy: { createdAt: 'desc' },
+        })
+
+        return {
+            message: "Recent projects retrieved successfully",
+            data: projects,
+            total: projects.length
+        }
+    }),
+
     getProject: protectedProcedure.input(
         z.object({
             projectID: z.string().min(1, "Project ID is required"),

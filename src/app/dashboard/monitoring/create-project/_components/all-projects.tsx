@@ -19,7 +19,7 @@ import {
 import { CircleChevronRight, SquarePen, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Project } from "./create-project";
-import { Pagination } from "./pagination";
+// import { Pagination } from "./pagination";
 import { Card, CardTitle } from "@/components/ui/card";
 import { api } from "@/trpc/trpc-server/react";
 import { useRouter } from 'next/navigation';
@@ -28,15 +28,15 @@ import Link from "next/link";
 
 interface AllProjectsProps {
   allProject: Project[];
-  totalPages: number;
-  totalProjects: number;
-  page: number;
+  // totalPages: number;
+  // totalProjects: number;
+  // page: number;
 }
 
 export function AllProjects({
   allProject,
-  totalPages,
-  page,
+  // totalPages,
+  // page,
 }: AllProjectsProps) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -70,9 +70,9 @@ export function AllProjects({
       },
     });
 
-  const changePage = (newPage: number) => {
-    router.push(`/dashboard/monitoring/create-project?page=${newPage}`);
-  };
+  // const changePage = (newPage: number) => {
+  //   router.push(`/dashboard/monitoring/create-project?page=${newPage}`);
+  // };
 
   const handleDelete = async () => {
     if (!selectedProject) return;
@@ -91,54 +91,7 @@ export function AllProjects({
 
   return (
     <div className="w-full">
-      <h1 className="text-2xl font-bold tracking-tight">All Projects</h1>
-
-      <Card className="mt-4 p-3 px-6 rounded-sm gap-2 shadow-sm border bg-white">
-        <CardTitle className="mb-2 text-lg font-semibold">
-          Filter
-        </CardTitle>
-
-        <div className="flex flex-col lg:flex-row gap-4 items-end">
-
-          {/* Project Name */}
-          <div className="flex flex-col w-full ">
-            <label className="text-sm font-medium mb-1 text-muted-foreground">
-              Project Name
-            </label>
-            <Input
-              type="text"
-              placeholder="Search by project name..."
-            />
-          </div>
-
-          {/* From Date */}
-          <div className="flex flex-col w-full ">
-            <label className="text-sm font-medium mb-1 text-muted-foreground">
-              From Date
-            </label>
-            <Input type="date" />
-          </div>
-
-          {/* To Date */}
-          <div className="flex flex-col w-full ">
-            <label className="text-sm font-medium mb-1 text-muted-foreground">
-              To Date
-            </label>
-            <Input type="date" />
-          </div>
-        </div>
-        {/* Buttons */}
-        <div className="flex justify-end mt-3">
-          <div className="flex gap-3">
-            <Button className="cursor-pointer">
-              Apply
-            </Button>
-            <Button variant="outline" className="cursor-pointer">
-              Reset
-            </Button>
-          </div>
-        </div>
-      </Card>
+      <h1 className="text-2xl font-bold tracking-tight">Recent Projects</h1>
 
       {/* ================= TABLE ================= */}
 
@@ -226,13 +179,13 @@ export function AllProjects({
           </TableBody>
         </Table>
 
-        <div className="mt-3">
+        {/* <div className="mt-3">
           <Pagination
             page={page}
             totalPages={totalPages}
             onPageChange={changePage}
           />
-        </div>
+        </div> */}
       </div>
 
       {/* ================= DELETE DIALOG ================= */}

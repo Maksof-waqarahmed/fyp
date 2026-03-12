@@ -25,10 +25,10 @@ export interface ProjectsResponse {
   message: string;
   data: Project[];
   total: number;
-  page: number;
-  totalPages: number;
+  // page: number;
+  // totalPages: number;
 }
-const CreateProject = ({ data, page, total, totalPages }: ProjectsResponse) => {
+const CreateProject = ({ data, total }: ProjectsResponse) => {
   const [showForm, setShowForm] = useState(data.length !== 0);
   const router = useRouter();
 
@@ -107,9 +107,9 @@ const CreateProject = ({ data, page, total, totalPages }: ProjectsResponse) => {
           <div className="mt-8">
             <AllProjects
               allProject={data}
-              totalPages={totalPages}
-              totalProjects={total}
-              page={page}
+              // totalPages={totalPages}
+              // totalProjects={total}
+              // page={page}
             />
           </div>
         </>

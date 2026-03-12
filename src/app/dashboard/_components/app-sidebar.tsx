@@ -46,6 +46,11 @@ const data = {
           icon: SquareTerminal,
         },
         {
+          title: "All Projects",
+          url: "/dashboard/monitoring/allProjects",
+          icon: Settings2,
+        },
+        {
           title: "All Endpoints",
           url: "/dashboard/monitoring/allEndPoints",
           icon: Settings2,
