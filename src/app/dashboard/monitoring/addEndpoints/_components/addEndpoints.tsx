@@ -30,6 +30,13 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isEditEndPoints, setIsEditEndPoints] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    url: '',
+    checkInterval: 1
+  });
 
   const [page, setPage] = useState(1);
   const pageSize = 5;
@@ -51,7 +58,30 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
       router.refresh();
       setIsEditEndPoints(false);
     },
+  });
 
+  const { mutateAsync: deleteEndPoint, isPending: isDeleting } = api.endpoint.deleteEndPoint.useMutation({
+    onError: (error) => {
+      toast.error(error.message || 'Failed to delete endpoint');
+    },
+    onSuccess: () => {
+      toast.success('Endpoint deleted successfully');
+      router.refresh();
+      setIsDeleteOpen(false);
+      setSelectedEndpoint(null);
+    },
+  });
+
+  const { mutateAsync: updateEndPoint, isPending: isUpdating } = api.endpoint.updateEndPoint.useMutation({
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update endpoint');
+    },
+    onSuccess: () => {
+      toast.success('Endpoint updated successfully');
+      router.refresh();
+      setIsEditDialogOpen(false);
+      setSelectedEndpoint(null);
+    },
   });
   const form = useForm({
     resolver: zodResolver(endPointSchema),
@@ -178,6 +208,15 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                       <Button className="cursor-pointer hover:bg-blue-500/40 duration-300 ease-in-out"
                         size="icon"
                         variant="ghost"
+                        onClick={() => {
+                          setSelectedEndpoint(ep);
+                          setEditFormData({
+                            name: ep.name,
+                            url: ep.url,
+                            checkInterval: ep.checkInterval
+                          });
+                          setIsEditDialogOpen(true);
+                        }}
                       >
                         <SquarePen className="h-4 w-4" />
                       </Button>
@@ -185,7 +224,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                         size="icon"
                         variant="ghost"
                         onClick={() => {
-                          setSelectedProject(project);
+                          setSelectedEndpoint(ep);
                           setIsDeleteOpen(true);
                         }}
                       >
@@ -198,11 +237,11 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
               <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Delete Project</DialogTitle>
+                    <DialogTitle>Delete Endpoint</DialogTitle>
                     <DialogDescription>
                       Are you sure you want to delete{" "}
                       <span className="font-semibold">
-                        {selectedProject?.projectName}
+                        {selectedEndpoint?.name}
                       </span>
                       ?
                     </DialogDescription>
@@ -213,16 +252,25 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                       variant="outline"
                       onClick={() => {
                         setIsDeleteOpen(false);
-                        setSelectedProject(null);
+                        setSelectedEndpoint(null);
                       }}
+                      disabled={isDeleting}
                     >
                       Cancel
                     </Button>
 
                     <Button
                       variant="destructive"
+                      onClick={async () => {
+                        if (selectedEndpoint) {
+                          await deleteEndPoint({ endpointID: selectedEndpoint.id });
+                        }
+                      }}
+                      disabled={isDeleting}
                     >
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isDeleting && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
                       Delete
                     </Button>
                   </div>
@@ -364,6 +412,89 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
               </DialogContent>
             </Dialog>
           )}
+
+        {/* Edit Endpoint Dialog */}
+        {isEditDialogOpen && (
+          <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+            setIsEditDialogOpen(open);
+            if (!open) {
+              setSelectedEndpoint(null);
+              setEditFormData({ name: '', url: '', checkInterval: 1 });
+            }
+          }}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit Endpoint</DialogTitle>
+                <DialogDescription>
+                  Update the details of your endpoint
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 mt-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Name</label>
+                  <Input
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Endpoint name"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-1 block">URL</label>
+                  <Input
+                    value={editFormData.url}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, url: e.target.value }))}
+                    placeholder="https://example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Check Interval (hours)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editFormData.checkInterval}
+                    onChange={(e) => setEditFormData(prev => ({ ...prev, checkInterval: Number(e.target.value) }))}
+                    placeholder="1"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditDialogOpen(false);
+                    setSelectedEndpoint(null);
+                  }}
+                  disabled={isUpdating}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  onClick={async () => {
+                    if (selectedEndpoint) {
+                      await updateEndPoint({
+                        endpointID: selectedEndpoint.id,
+                        name: editFormData.name,
+                        url: editFormData.url,
+                        checkInterval: editFormData.checkInterval
+                      });
+                    }
+                  }}
+                  disabled={isUpdating}
+                >
+                  {isUpdating && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Update Endpoint
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );
