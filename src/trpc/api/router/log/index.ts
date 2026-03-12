@@ -67,38 +67,20 @@ export const logs = createTRPCRouter({
 
             const where: any = {
                 endpoint: {
-                    userId: ctx.session.user.id,
+                    project: { userId: ctx.session.user.id },
                     isDeleted: false,
                 },
             };
 
-            // Filter by endpoint name
-            if (input.projectName) {
-                where.endpoint = {
-                    ...where.endpoint,
-                    project: {
-                        is: {
-                            projectName: {
-                                contains: input.projectName,
-                                mode: "insensitive",
-                            },
-                        },
-                    },
-                };
-            }
-
-            // Filter by project name (only if endpoint.project exists)
             if (input.projectName) {
                 where.endpoint.project = {
-                    is: {
-                        projectName: {
-                            contains: input.projectName,
-                            mode: "insensitive",
-                        },
+                    userId: ctx.session.user.id,
+                    projectName: {
+                        contains: input.projectName,
+                        mode: "insensitive",
                     },
                 };
             }
-            console.log(JSON.stringify(where))
 
             // Filter by status
             if (input.status) {
@@ -217,7 +199,7 @@ export const logs = createTRPCRouter({
                 const logs = await ctx.prisma.log.findMany({
                     where: {
                         endpoint: {
-                            userId: ctx.session.user.id,
+                            project: { userId: ctx.session.user.id },
                         },
                     },
                     select: {
@@ -266,7 +248,7 @@ export const logs = createTRPCRouter({
                 where: {
                     id: input.logId,
                     endpoint: {
-                        userId: ctx.session.user.id,
+                        project: { userId: ctx.session.user.id },
                     },
                 },
                 include: {
@@ -439,7 +421,7 @@ export const logs = createTRPCRouter({
 
             // Build where clause
             const whereClause: any = {
-                endpoint: { userId: ctx.session.user.id },
+                endpoint: { project: { userId: ctx.session.user.id } },
                 checkedAt: {
                     gte: startDate,
                     lte: endDate,
@@ -713,7 +695,7 @@ export const logs = createTRPCRouter({
             const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
 
             const whereClause: any = {
-                endpoint: { userId: ctx.session.user.id },
+                endpoint: { project: { userId: ctx.session.user.id } },
                 checkedAt: { lt: cutoffDate },
             };
 
@@ -750,7 +732,7 @@ export const logs = createTRPCRouter({
     ).query(async ({ ctx, input }) => {
         try {
             const whereClause: any = {
-                endpoint: { userId: ctx.session.user.id },
+                endpoint: { project: { userId: ctx.session.user.id } },
             };
 
             if (input?.endpointId) {

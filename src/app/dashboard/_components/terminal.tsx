@@ -10,89 +10,105 @@ const TerminalComp = ({ data }: TerminalProps) => {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case "UP":
-                return "text-green-400"
-            case "DOWN":
-                return "text-red-400"
-            default:
-                return "text-gray-400"
+            case "UP": return "text-emerald-400"
+            case "DOWN": return "text-red-400"
+            case "REDIRECT": return "text-yellow-400"
+            default: return "text-gray-400"
         }
     }
 
     const getHttpColor = (code: number | null) => {
-        if (!code) return "text-gray-400"
-        if (code >= 200 && code < 300) return "text-green-400"
-        if (code >= 400 && code < 500) return "text-yellow-400"
+        if (!code) return "text-gray-500"
+        if (code >= 200 && code < 300) return "text-emerald-400"
+        if (code >= 300 && code < 400) return "text-yellow-400"
+        if (code >= 400 && code < 500) return "text-orange-400"
         if (code >= 500) return "text-red-400"
         return "text-gray-400"
     }
 
     return (
-        <Card className="bg-black border-gray-700">
-            <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-green-400">
-                    <Terminal className="h-5 w-5" />
-                    Live Logs
+        <Card className="bg-zinc-950 border-zinc-800 rounded-2xl flex flex-col h-full">
+            <CardHeader className="pb-3 pt-4 px-4 shrink-0">
+                <CardTitle className="flex items-center gap-2 text-emerald-400 text-sm font-mono">
+                    <div className="flex gap-1.5">
+                        <span className="h-3 w-3 rounded-full bg-red-500/70" />
+                        <span className="h-3 w-3 rounded-full bg-yellow-500/70" />
+                        <span className="h-3 w-3 rounded-full bg-emerald-500/70" />
+                    </div>
+                    <Terminal className="h-4 w-4 ml-1" />
+                    <span>live logs</span>
+                    {data.length > 0 && (
+                        <span className="ml-auto text-[10px] text-zinc-500 font-normal">
+                            {data.length} entries
+                        </span>
+                    )}
                 </CardTitle>
             </CardHeader>
 
-            <CardContent>
-                <div className="bg-black rounded-lg font-mono text-sm max-h-96 overflow-y-auto">
-                    {data?.map((log) => (
-                        <div key={log.id} className="mb-3 hover:bg-gray-900 p-2 rounded">
+            <CardContent className="px-4 pb-4 flex-1 min-h-0">
+                <div className="h-full max-h-100 overflow-y-auto font-mono text-xs space-y-1 pr-1
+                    scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
 
-                            <span className="text-gray-500">
-                                [{new Date(log.checkedAt).toLocaleString()}]
-                            </span>{" "}
+                    {data.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-zinc-600">
+                            <span>~ no logs yet</span>
+                        </div>
+                    ) : data.map((log) => (
+                        <div
+                            key={log.id}
+                            className="group py-1.5 px-2 rounded-lg hover:bg-zinc-900 transition-colors border border-transparent hover:border-zinc-800"
+                        >
+                            {/* Line 1: timestamp + status + code + response time */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-zinc-600 text-[10px] shrink-0">
+                                    {new Date(log.checkedAt).toLocaleTimeString()}
+                                </span>
+                                <span className={`font-semibold w-16 shrink-0 ${getStatusColor(log.status)}`}>
+                                    {log.status}
+                                </span>
+                                <span className={`shrink-0 ${getHttpColor(log.httpCode)}`}>
+                                    {log.httpCode ?? '---'}
+                                </span>
+                                {log.responseTime != null && (
+                                    <span className="text-zinc-400 shrink-0">
+                                        {log.responseTime}ms
+                                    </span>
+                                )}
+                                {!log.sslValid && (
+                                    <span className="text-yellow-500 text-[10px]">⚠ SSL</span>
+                                )}
+                                {log.dnsStatus !== "RESOLVED" && (
+                                    <span className="text-red-400 text-[10px]">⚠ DNS</span>
+                                )}
+                            </div>
 
-                            <span className={getHttpColor(log.httpCode)}>
-                                {log.httpCode ?? "N/A"}
-                            </span>{" "}
-
-                            <span className="text-blue-400">
-                                <a href={log.endpoint?.url} target="_blank">
+                            {/* Line 2: URL + name */}
+                            <div className="flex items-center gap-1.5 mt-0.5 pl-0.5">
+                                <span className="text-zinc-600">└</span>
+                                <a
+                                    href={log.endpoint?.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-blue-400 hover:text-blue-300 truncate transition-colors"
+                                >
                                     {log.endpoint?.url}
                                 </a>
-                            </span>{" "}
+                                {log.endpoint?.name && (
+                                    <span className="text-zinc-500 shrink-0">
+                                        ({log.endpoint.name})
+                                    </span>
+                                )}
+                            </div>
 
-                            <span className="text-purple-400">
-                                ({log.endpoint?.name})
-                            </span>
-
-
-                            <span className={getStatusColor(log.status)}>
-                                {log.status}
-                            </span>{" "}
-
-                            <span className="text-gray-400">
-                                {log.responseTime}ms
-                            </span>
-
-                            {!log.sslValid && (
-                                <span className="text-yellow-400 ml-2">
-                                    SSL Invalid
-                                </span>
+                            {/* Line 3: error message if any */}
+                            {log.errorMessage && (
+                                <div className="flex items-center gap-1.5 mt-0.5 pl-0.5">
+                                    <span className="text-zinc-700">└</span>
+                                    <span className="text-red-400/80 truncate">{log.errorMessage}</span>
+                                </div>
                             )}
-
-                            {log.dnsStatus !== "RESOLVED" && (
-                                <span className="text-red-400 ml-2">
-                                    DNS Issue
-                                </span>
-                            )}
-
-                            <br />
-
-                            <span className="text-gray-300 ml-4">
-                                └─ {log.errorMessage ?? "Successful"}
-                            </span>
                         </div>
                     ))}
-
-                    {data?.length === 0 && (
-                        <div className="text-gray-500 text-center py-8">
-                            No logs found
-                        </div>
-                    )}
                 </div>
             </CardContent>
         </Card>

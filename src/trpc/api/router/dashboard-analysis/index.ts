@@ -4,12 +4,10 @@ import { z } from "zod";
 
 export const dashboardAnalysis = createTRPCRouter({
 
-    // Main dashboard overview with all key metrics
     getAnalysis: protectedProcedure.query(async ({ ctx }) => {
         const now = new Date();
         const userId = ctx.session.user.id;
 
-        // Calculate time ranges
         const startOfWeek = new Date(now);
         const day = now.getDay() || 7;
         startOfWeek.setDate(now.getDate() - day + 1);
@@ -27,7 +25,6 @@ export const dashboardAnalysis = createTRPCRouter({
                 recentDownEndpoints,
                 upcomingChecks,
             ] = await Promise.all([
-                // Project statistics
                 ctx.prisma.project.aggregate({
                     where: {
                         userId,
@@ -36,31 +33,30 @@ export const dashboardAnalysis = createTRPCRouter({
                     _count: true,
                 }),
 
-                // Endpoint statistics
                 Promise.all([
                     ctx.prisma.endpoint.count({
                         where: {
-                            userId,
+                            project: { userId },
                             isDeleted: false,
                         },
                     }),
                     ctx.prisma.endpoint.count({
                         where: {
-                            userId,
+                            project: { userId },
                             isDeleted: false,
                             lastStatus: "UP",
                         },
                     }),
                     ctx.prisma.endpoint.count({
                         where: {
-                            userId,
+                            project: { userId },
                             isDeleted: false,
                             lastStatus: "DOWN",
                         },
                     }),
                     ctx.prisma.endpoint.count({
                         where: {
-                            userId,
+                            project: { userId },
                             isDeleted: false,
                             createdAt: {
                                 gte: startOfMonth,
@@ -69,7 +65,7 @@ export const dashboardAnalysis = createTRPCRouter({
                     }),
                     ctx.prisma.endpoint.count({
                         where: {
-                            userId,
+                            project: { userId },
                             isDeleted: false,
                             createdAt: {
                                 gte: startOfLastMonth,
@@ -79,19 +75,19 @@ export const dashboardAnalysis = createTRPCRouter({
                     }),
                 ]),
 
-                // Log statistics
+                // Log statistics — Log has no userId, goes through endpoint -> project
                 Promise.all([
                     // Total logs
                     ctx.prisma.log.count({
                         where: {
-                            endpoint: { userId },
+                            endpoint: { project: { userId } },
                         },
                     }),
                     // Current week UP
                     ctx.prisma.log.count({
                         where: {
                             status: "UP",
-                            endpoint: { userId },
+                            endpoint: { project: { userId } },
                             checkedAt: {
                                 gte: startOfWeek,
                             },
@@ -101,7 +97,7 @@ export const dashboardAnalysis = createTRPCRouter({
                     ctx.prisma.log.count({
                         where: {
                             status: "DOWN",
-                            endpoint: { userId },
+                            endpoint: { project: { userId } },
                             checkedAt: {
                                 gte: startOfWeek,
                             },
@@ -111,7 +107,7 @@ export const dashboardAnalysis = createTRPCRouter({
                     ctx.prisma.log.count({
                         where: {
                             status: "UP",
-                            endpoint: { userId },
+                            endpoint: { project: { userId } },
                             checkedAt: {
                                 gte: startOfMonth,
                             },
@@ -121,7 +117,7 @@ export const dashboardAnalysis = createTRPCRouter({
                     ctx.prisma.log.count({
                         where: {
                             status: "DOWN",
-                            endpoint: { userId },
+                            endpoint: { project: { userId } },
                             checkedAt: {
                                 gte: startOfMonth,
                             },
@@ -130,7 +126,7 @@ export const dashboardAnalysis = createTRPCRouter({
                     // Average response time this week
                     ctx.prisma.log.aggregate({
                         where: {
-                            endpoint: { userId },
+                            endpoint: { project: { userId } },
                             checkedAt: {
                                 gte: startOfWeek,
                             },
@@ -145,7 +141,7 @@ export const dashboardAnalysis = createTRPCRouter({
                 // Recent down endpoints (last 5)
                 ctx.prisma.endpoint.findMany({
                     where: {
-                        userId,
+                        project: { userId },
                         isDeleted: false,
                         lastStatus: "DOWN",
                     },
@@ -170,7 +166,7 @@ export const dashboardAnalysis = createTRPCRouter({
                 // Upcoming checks (next 5)
                 ctx.prisma.endpoint.findMany({
                     where: {
-                        userId,
+                        project: { userId },
                         isDeleted: false,
                         nextCheckAt: { not: null },
                     },
@@ -262,6 +258,7 @@ export const dashboardAnalysis = createTRPCRouter({
     }),
 
     // Get uptime trends for charts (last 7 or 30 days)
+    // Log has no 'date' field — group by date extracted from checkedAt in memory
     getUptimeTrends: protectedProcedure.input(
         z.object({
             days: z.number().int().min(1).max(90).optional().default(7),
@@ -274,42 +271,39 @@ export const dashboardAnalysis = createTRPCRouter({
         startDate.setHours(0, 0, 0, 0);
 
         try {
-            // Get daily log counts grouped by status
-            const logs = await ctx.prisma.log.groupBy({
-                by: ['date', 'status'],
+            const logs = await ctx.prisma.log.findMany({
                 where: {
-                    endpoint: { userId: ctx.session.user.id },
-                    date: {
-                        gte: startDate,
-                    },
+                    endpoint: { project: { userId: ctx.session.user.id } },
+                    checkedAt: { gte: startDate },
                 },
-                _count: true,
-                orderBy: {
-                    date: 'asc',
+                select: {
+                    status: true,
+                    checkedAt: true,
                 },
+                orderBy: { checkedAt: 'asc' },
             });
 
-            // Transform data for chart
-            const dailyData: Record<string, { date: Date; up: number; down: number; other: number }> = {};
+            // Group by date string extracted from checkedAt
+            const dailyData: Record<string, { date: string; up: number; down: number; other: number }> = {};
 
             logs.forEach((log) => {
-                const dateKey = log.date.toISOString().split('T')[0];
+                const dateKey = log.checkedAt.toISOString().split('T')[0]!;
 
                 if (!dailyData[dateKey]) {
-                    dailyData[dateKey] = { date: log.date, up: 0, down: 0, other: 0 };
+                    dailyData[dateKey] = { date: dateKey, up: 0, down: 0, other: 0 };
                 }
 
                 if (log.status === 'UP') {
-                    dailyData[dateKey].up = log._count;
+                    dailyData[dateKey].up += 1;
                 } else if (log.status === 'DOWN') {
-                    dailyData[dateKey].down = log._count;
+                    dailyData[dateKey].down += 1;
                 } else {
-                    dailyData[dateKey].other += log._count;
+                    dailyData[dateKey].other += 1;
                 }
             });
 
             const trends = Object.values(dailyData).map(day => ({
-                date: day.date.toISOString().split('T')[0],
+                date: day.date,
                 up: day.up,
                 down: day.down,
                 other: day.other,
@@ -332,6 +326,7 @@ export const dashboardAnalysis = createTRPCRouter({
     }),
 
     // Get response time trends
+    // Log has no 'date' field — group by date extracted from checkedAt in memory
     getResponseTimeTrends: protectedProcedure.input(
         z.object({
             endpointId: z.string().optional(),
@@ -345,41 +340,50 @@ export const dashboardAnalysis = createTRPCRouter({
         startDate.setHours(0, 0, 0, 0);
 
         try {
-            const whereClause: any = {
-                endpoint: { userId: ctx.session.user.id },
-                checkedAt: {
-                    gte: startDate,
+            const logs = await ctx.prisma.log.findMany({
+                where: {
+                    endpoint: {
+                        project: { userId: ctx.session.user.id },
+                        ...(input?.endpointId ? { id: input.endpointId } : {}),
+                    },
+                    checkedAt: { gte: startDate },
+                    responseTime: { not: null },
                 },
-                responseTime: { not: null },
-            };
-
-            if (input?.endpointId) {
-                whereClause.endpointId = input.endpointId;
-            }
-
-            const logs = await ctx.prisma.log.groupBy({
-                by: ['date'],
-                where: whereClause,
-                _avg: {
+                select: {
+                    checkedAt: true,
                     responseTime: true,
                 },
-                _min: {
-                    responseTime: true,
-                },
-                _max: {
-                    responseTime: true,
-                },
-                orderBy: {
-                    date: 'asc',
-                },
+                orderBy: { checkedAt: 'asc' },
             });
 
-            const trends = logs.map(log => ({
-                date: log.date.toISOString().split('T')[0],
-                avgResponseTime: log._avg.responseTime ? Math.round(log._avg.responseTime) : null,
-                minResponseTime: log._min.responseTime,
-                maxResponseTime: log._max.responseTime,
-            }));
+            // Group by date extracted from checkedAt, compute avg/min/max in memory
+            const dailyData: Record<string, { date: string; times: number[] }> = {};
+
+            logs.forEach((log) => {
+                if (log.responseTime === null) return;
+                const dateKey = log.checkedAt.toISOString().split('T')[0]!;
+
+                if (!dailyData[dateKey]) {
+                    dailyData[dateKey] = { date: dateKey, times: [] };
+                }
+                dailyData[dateKey].times.push(log.responseTime);
+            });
+
+            const trends = Object.values(dailyData).map(day => {
+                const times = day.times;
+                const avg = times.length > 0
+                    ? Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+                    : null;
+                const min = times.length > 0 ? Math.min(...times) : null;
+                const max = times.length > 0 ? Math.max(...times) : null;
+
+                return {
+                    date: day.date,
+                    avgResponseTime: avg,
+                    minResponseTime: min,
+                    maxResponseTime: max,
+                };
+            });
 
             return {
                 message: "Response time trends retrieved successfully",
@@ -398,7 +402,7 @@ export const dashboardAnalysis = createTRPCRouter({
         try {
             const endpoints = await ctx.prisma.endpoint.findMany({
                 where: {
-                    userId: ctx.session.user.id,
+                    project: { userId: ctx.session.user.id },
                     isDeleted: false,
                 },
                 select: {
@@ -486,20 +490,20 @@ export const dashboardAnalysis = createTRPCRouter({
             const [totalNotifications, sentNotifications, failedNotifications] = await Promise.all([
                 ctx.prisma.notification.count({
                     where: {
-                        endpoint: { userId: ctx.session.user.id },
+                        endpoint: { project: { userId: ctx.session.user.id } },
                         sentAt: { gte: startDate },
                     },
                 }),
                 ctx.prisma.notification.count({
                     where: {
-                        endpoint: { userId: ctx.session.user.id },
+                        endpoint: { project: { userId: ctx.session.user.id } },
                         status: 'SEND',
                         sentAt: { gte: startDate },
                     },
                 }),
                 ctx.prisma.notification.count({
                     where: {
-                        endpoint: { userId: ctx.session.user.id },
+                        endpoint: { project: { userId: ctx.session.user.id } },
                         status: 'FAIL',
                         sentAt: { gte: startDate },
                     },
@@ -544,8 +548,8 @@ export const dashboardAnalysis = createTRPCRouter({
                 by: ['endpointId'],
                 where: {
                     endpoint: {
-                        userId: ctx.session.user.id,
-                        isDeleted: false
+                        project: { userId: ctx.session.user.id },
+                        isDeleted: false,
                     },
                     checkedAt: { gte: startDate },
                     responseTime: { not: null },
