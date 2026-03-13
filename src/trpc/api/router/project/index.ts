@@ -11,27 +11,20 @@ export const project = createTRPCRouter({
         })
     ).mutation(async ({ ctx, input }) => {
         const userID = ctx.session.user.id;
-        try {
-            await ctx.prisma.project.create({
-                data: {
-                    projectName: input.projectName,
-                    ...(input.description && { description: input.description }),
-                    user: {
-                        connect: {
-                            id: userID
-                        }
+        await ctx.prisma.project.create({
+            data: {
+                projectName: input.projectName,
+                ...(input.description && { description: input.description }),
+                user: {
+                    connect: {
+                        id: userID
                     }
-                },
-            })
+                }
+            },
+        })
 
-            return {
-                message: "Project created successfully"
-            }
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error"
-            })
+        return {
+            message: "Project created successfully"
         }
     }),
 
@@ -165,42 +158,34 @@ export const project = createTRPCRouter({
             });
         }
 
-        try {
-            const project = await ctx.prisma.project.findFirst({
-                where: {
-                    id: projectID,
-                    userId: ctx.session.user.id,
-                    isDeleted: false
-                },
-            });
+        const project = await ctx.prisma.project.findFirst({
+            where: {
+                id: projectID,
+                userId: ctx.session.user.id,
+                isDeleted: false
+            },
+        });
 
-            if (!project) {
-                throw new TRPCError({
-                    code: "NOT_FOUND",
-                    message: "Project not found",
-                });
-            }
-
-            await ctx.prisma.project.update({
-                where: {
-                    id: projectID,
-                },
-                data: {
-                    ...(projectName && { projectName }),
-                    ...(description !== undefined && { description }),
-                },
-            });
-
-            return {
-                message: "Project updated successfully"
-            };
-        } catch (error) {
-            if (error instanceof TRPCError) throw error;
+        if (!project) {
             throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error"
-            })
+                code: "NOT_FOUND",
+                message: "Project not found",
+            });
         }
+
+        await ctx.prisma.project.update({
+            where: {
+                id: projectID,
+            },
+            data: {
+                ...(projectName && { projectName }),
+                ...(description !== undefined && { description }),
+            },
+        });
+
+        return {
+            message: "Project updated successfully"
+        };
     }),
 
     deleteProject: protectedProcedure.input(
@@ -210,39 +195,31 @@ export const project = createTRPCRouter({
     ).mutation(async ({ ctx, input }) => {
         const { projectID } = input;
 
-        try {
-            const project = await ctx.prisma.project.findFirst({
-                where: {
-                    id: projectID,
-                    userId: ctx.session.user.id,
-                    isDeleted: false
-                },
-            });
+        const project = await ctx.prisma.project.findFirst({
+            where: {
+                id: projectID,
+                userId: ctx.session.user.id,
+                isDeleted: false
+            },
+        });
 
-            if (!project) {
-                throw new TRPCError({
-                    code: "NOT_FOUND",
-                    message: "Project not found",
-                });
-            }
-            await ctx.prisma.project.update({
-                where: {
-                    id: projectID,
-                },
-                data: {
-                    isDeleted: true,
-                },
-            });
-
-            return {
-                message: "Project deleted successfully",
-            };
-        } catch (error) {
-            if (error instanceof TRPCError) throw error;
+        if (!project) {
             throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error"
-            })
+                code: "NOT_FOUND",
+                message: "Project not found",
+            });
         }
+        await ctx.prisma.project.update({
+            where: {
+                id: projectID,
+            },
+            data: {
+                isDeleted: true,
+            },
+        });
+
+        return {
+            message: "Project deleted successfully",
+        };
     })
 })

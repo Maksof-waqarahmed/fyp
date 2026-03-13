@@ -207,29 +207,22 @@ export const endpoint = createTRPCRouter({
             });
         }
 
-        try {
-            const updatedFields: any = { ...updateData };
+        const updatedFields: any = { ...updateData };
 
-            if (updateData.checkInterval) {
-                updatedFields.nextCheckAt = new Date(
-                    Date.now() + updateData.checkInterval * 60 * 60 * 1000
-                );
-            }
+        if (updateData.checkInterval) {
+            updatedFields.nextCheckAt = new Date(
+                Date.now() + updateData.checkInterval * 60 * 60 * 1000
+            );
+        }
 
-            const updatedEndpoint = await ctx.prisma.endpoint.update({
-                where: { id: endpointID },
-                data: updatedFields,
-            });
+        const updatedEndpoint = await ctx.prisma.endpoint.update({
+            where: { id: endpointID },
+            data: updatedFields,
+        });
 
-            return {
-                message: "Endpoint updated successfully",
-                data: updatedEndpoint
-            }
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error"
-            })
+        return {
+            message: "Endpoint updated successfully",
+            data: updatedEndpoint
         }
     }),
 
@@ -253,20 +246,13 @@ export const endpoint = createTRPCRouter({
             });
         }
 
-        try {
-            await ctx.prisma.endpoint.update({
-                where: { id: input.endpointID },
-                data: { isDeleted: true },
-            });
+        await ctx.prisma.endpoint.update({
+            where: { id: input.endpointID },
+            data: { isDeleted: true },
+        });
 
-            return {
-                message: "Endpoint deleted successfully"
-            }
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error"
-            })
+        return {
+            message: "Endpoint deleted successfully"
         }
     }),
 })

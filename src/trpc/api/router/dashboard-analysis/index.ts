@@ -17,14 +17,13 @@ export const dashboardAnalysis = createTRPCRouter({
         const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-        try {
-            const [
-                projectStats,
-                endpointStats,
-                logStats,
-                recentDownEndpoints,
-                upcomingChecks,
-            ] = await Promise.all([
+        const [
+            projectStats,
+            endpointStats,
+            logStats,
+            recentDownEndpoints,
+            upcomingChecks,
+        ] = await Promise.all([
                 ctx.prisma.project.aggregate({
                     where: {
                         userId,
@@ -182,85 +181,79 @@ export const dashboardAnalysis = createTRPCRouter({
                     },
                     take: 5,
                 }),
-            ]);
+        ]);
 
-            const [totalEndpoints, activeEndpoints, downEndpoints, currentMonthEndpoints, lastMonthEndpoints] = endpointStats;
-            const [totalLogs, currentWeekUp, currentWeekDown, currentMonthUp, currentMonthDown, avgResponseTime] = logStats;
+        const [totalEndpoints, activeEndpoints, downEndpoints, currentMonthEndpoints, lastMonthEndpoints] = endpointStats;
+        const [totalLogs, currentWeekUp, currentWeekDown, currentMonthUp, currentMonthDown, avgResponseTime] = logStats;
 
-            // Calculate uptime percentage
-            const totalChecks = currentWeekUp + currentWeekDown;
-            const weeklyUptime = totalChecks > 0 ? ((currentWeekUp / totalChecks) * 100).toFixed(2) : "0.00";
+        // Calculate uptime percentage
+        const totalChecks = currentWeekUp + currentWeekDown;
+        const weeklyUptime = totalChecks > 0 ? ((currentWeekUp / totalChecks) * 100).toFixed(2) : "0.00";
 
-            const monthlyChecks = currentMonthUp + currentMonthDown;
-            const monthlyUptime = monthlyChecks > 0 ? ((currentMonthUp / monthlyChecks) * 100).toFixed(2) : "0.00";
+        const monthlyChecks = currentMonthUp + currentMonthDown;
+        const monthlyUptime = monthlyChecks > 0 ? ((currentMonthUp / monthlyChecks) * 100).toFixed(2) : "0.00";
 
-            // Calculate growth metrics
-            const endpointGrowth = lastMonthEndpoints > 0
-                ? (((currentMonthEndpoints - lastMonthEndpoints) / lastMonthEndpoints) * 100).toFixed(2)
-                : "0.00";
+        // Calculate growth metrics
+        const endpointGrowth = lastMonthEndpoints > 0
+            ? (((currentMonthEndpoints - lastMonthEndpoints) / lastMonthEndpoints) * 100).toFixed(2)
+            : "0.00";
 
-            return {
-                message: "Dashboard analysis retrieved successfully",
-                data: {
-                    // Project metrics
-                    projects: {
-                        total: projectStats._count,
+        return {
+            message: "Dashboard analysis retrieved successfully",
+            data: {
+                // Project metrics
+                projects: {
+                    total: projectStats._count,
+                },
+
+                // Endpoint metrics
+                endpoints: {
+                    total: totalEndpoints,
+                    active: activeEndpoints,
+                    down: downEndpoints,
+                    inactive: totalEndpoints - activeEndpoints - downEndpoints,
+                    currentMonth: currentMonthEndpoints,
+                    lastMonth: lastMonthEndpoints,
+                    growth: `${endpointGrowth}%`,
+                },
+
+                // Uptime metrics
+                uptime: {
+                    weekly: `${weeklyUptime}%`,
+                    monthly: `${monthlyUptime}%`,
+                    weeklyChecks: {
+                        up: currentWeekUp,
+                        down: currentWeekDown,
+                        total: totalChecks,
                     },
-
-                    // Endpoint metrics
-                    endpoints: {
-                        total: totalEndpoints,
-                        active: activeEndpoints,
-                        down: downEndpoints,
-                        inactive: totalEndpoints - activeEndpoints - downEndpoints,
-                        currentMonth: currentMonthEndpoints,
-                        lastMonth: lastMonthEndpoints,
-                        growth: `${endpointGrowth}%`,
-                    },
-
-                    // Uptime metrics
-                    uptime: {
-                        weekly: `${weeklyUptime}%`,
-                        monthly: `${monthlyUptime}%`,
-                        weeklyChecks: {
-                            up: currentWeekUp,
-                            down: currentWeekDown,
-                            total: totalChecks,
-                        },
-                        monthlyChecks: {
-                            up: currentMonthUp,
-                            down: currentMonthDown,
-                            total: monthlyChecks,
-                        },
-                    },
-
-                    // Performance metrics
-                    performance: {
-                        avgResponseTime: avgResponseTime._avg.responseTime
-                            ? Math.round(avgResponseTime._avg.responseTime)
-                            : null,
-                        totalLogs,
-                    },
-
-                    // Alerts and upcoming
-                    alerts: {
-                        recentDownEndpoints: recentDownEndpoints.map(ep => ({
-                            ...ep,
-                            lastCheckedAt: ep.lastCheckedAt?.toISOString() ?? null,
-                        })),
-                        upcomingChecks: upcomingChecks.map(ep => ({
-                            ...ep,
-                            nextCheckAt: ep.nextCheckAt?.toISOString() ?? null,
-                        })),
+                    monthlyChecks: {
+                        up: currentMonthUp,
+                        down: currentMonthDown,
+                        total: monthlyChecks,
                     },
                 },
-            };
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-            });
-        }
+
+                // Performance metrics
+                performance: {
+                    avgResponseTime: avgResponseTime._avg.responseTime
+                        ? Math.round(avgResponseTime._avg.responseTime)
+                        : null,
+                    totalLogs,
+                },
+
+                // Alerts and upcoming
+                alerts: {
+                    recentDownEndpoints: recentDownEndpoints.map(ep => ({
+                        ...ep,
+                        lastCheckedAt: ep.lastCheckedAt?.toISOString() ?? null,
+                    })),
+                    upcomingChecks: upcomingChecks.map(ep => ({
+                        ...ep,
+                        nextCheckAt: ep.nextCheckAt?.toISOString() ?? null,
+                    })),
+                },
+            },
+        };
     }),
 
     // Get uptime trends for charts (last 7 or 30 days)
@@ -276,59 +269,52 @@ export const dashboardAnalysis = createTRPCRouter({
         startDate.setDate(now.getDate() - days);
         startDate.setHours(0, 0, 0, 0);
 
-        try {
-            const logs = await ctx.prisma.log.findMany({
-                where: {
-                    endpoint: { project: { userId: ctx.session.user.id } },
-                    checkedAt: { gte: startDate },
-                },
-                select: {
-                    status: true,
-                    checkedAt: true,
-                },
-                orderBy: { checkedAt: 'asc' },
-            });
+        const logs = await ctx.prisma.log.findMany({
+            where: {
+                endpoint: { project: { userId: ctx.session.user.id } },
+                checkedAt: { gte: startDate },
+            },
+            select: {
+                status: true,
+                checkedAt: true,
+            },
+            orderBy: { checkedAt: 'asc' },
+        });
 
-            // Group by date string extracted from checkedAt
-            const dailyData: Record<string, { date: string; up: number; down: number; other: number }> = {};
+        // Group by date string extracted from checkedAt
+        const dailyData: Record<string, { date: string; up: number; down: number; other: number }> = {};
 
-            logs.forEach((log) => {
-                const dateKey = log.checkedAt.toISOString().split('T')[0]!;
+        logs.forEach((log) => {
+            const dateKey = log.checkedAt.toISOString().split('T')[0]!;
 
-                if (!dailyData[dateKey]) {
-                    dailyData[dateKey] = { date: dateKey, up: 0, down: 0, other: 0 };
-                }
+            if (!dailyData[dateKey]) {
+                dailyData[dateKey] = { date: dateKey, up: 0, down: 0, other: 0 };
+            }
 
-                if (log.status === 'UP') {
-                    dailyData[dateKey].up += 1;
-                } else if (log.status === 'DOWN') {
-                    dailyData[dateKey].down += 1;
-                } else {
-                    dailyData[dateKey].other += 1;
-                }
-            });
+            if (log.status === 'UP') {
+                dailyData[dateKey].up += 1;
+            } else if (log.status === 'DOWN') {
+                dailyData[dateKey].down += 1;
+            } else {
+                dailyData[dateKey].other += 1;
+            }
+        });
 
-            const trends = Object.values(dailyData).map(day => ({
-                date: day.date,
-                up: day.up,
-                down: day.down,
-                other: day.other,
-                total: day.up + day.down + day.other,
-                uptimePercentage: day.up + day.down > 0
-                    ? ((day.up / (day.up + day.down)) * 100).toFixed(2)
-                    : "0.00",
-            }));
+        const trends = Object.values(dailyData).map(day => ({
+            date: day.date,
+            up: day.up,
+            down: day.down,
+            other: day.other,
+            total: day.up + day.down + day.other,
+            uptimePercentage: day.up + day.down > 0
+                ? ((day.up / (day.up + day.down)) * 100).toFixed(2)
+                : "0.00",
+        }));
 
-            return {
-                message: "Uptime trends retrieved successfully",
-                data: trends,
-            };
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-            });
-        }
+        return {
+            message: "Uptime trends retrieved successfully",
+            data: trends,
+        };
     }),
 
     // Get response time trends
@@ -345,141 +331,127 @@ export const dashboardAnalysis = createTRPCRouter({
         startDate.setDate(now.getDate() - days);
         startDate.setHours(0, 0, 0, 0);
 
-        try {
-            const logs = await ctx.prisma.log.findMany({
-                where: {
-                    endpoint: {
-                        project: { userId: ctx.session.user.id },
-                        ...(input?.endpointId ? { id: input.endpointId } : {}),
-                    },
-                    checkedAt: { gte: startDate },
-                    responseTime: { not: null },
+        const logs = await ctx.prisma.log.findMany({
+            where: {
+                endpoint: {
+                    project: { userId: ctx.session.user.id },
+                    ...(input?.endpointId ? { id: input.endpointId } : {}),
                 },
-                select: {
-                    checkedAt: true,
-                    responseTime: true,
-                },
-                orderBy: { checkedAt: 'asc' },
-            });
+                checkedAt: { gte: startDate },
+                responseTime: { not: null },
+            },
+            select: {
+                checkedAt: true,
+                responseTime: true,
+            },
+            orderBy: { checkedAt: 'asc' },
+        });
 
-            // Group by date extracted from checkedAt, compute avg/min/max in memory
-            const dailyData: Record<string, { date: string; times: number[] }> = {};
+        // Group by date extracted from checkedAt, compute avg/min/max in memory
+        const dailyData: Record<string, { date: string; times: number[] }> = {};
 
-            logs.forEach((log) => {
-                if (log.responseTime === null) return;
-                const dateKey = log.checkedAt.toISOString().split('T')[0]!;
+        logs.forEach((log) => {
+            if (log.responseTime === null) return;
+            const dateKey = log.checkedAt.toISOString().split('T')[0]!;
 
-                if (!dailyData[dateKey]) {
-                    dailyData[dateKey] = { date: dateKey, times: [] };
-                }
-                dailyData[dateKey].times.push(log.responseTime);
-            });
+            if (!dailyData[dateKey]) {
+                dailyData[dateKey] = { date: dateKey, times: [] };
+            }
+            dailyData[dateKey].times.push(log.responseTime);
+        });
 
-            const trends = Object.values(dailyData).map(day => {
-                const times = day.times;
-                const avg = times.length > 0
-                    ? Math.round(times.reduce((a, b) => a + b, 0) / times.length)
-                    : null;
-                const min = times.length > 0 ? Math.min(...times) : null;
-                const max = times.length > 0 ? Math.max(...times) : null;
-
-                return {
-                    date: day.date,
-                    avgResponseTime: avg,
-                    minResponseTime: min,
-                    maxResponseTime: max,
-                };
-            });
+        const trends = Object.values(dailyData).map(day => {
+            const times = day.times;
+            const avg = times.length > 0
+                ? Math.round(times.reduce((a, b) => a + b, 0) / times.length)
+                : null;
+            const min = times.length > 0 ? Math.min(...times) : null;
+            const max = times.length > 0 ? Math.max(...times) : null;
 
             return {
-                message: "Response time trends retrieved successfully",
-                data: trends,
+                date: day.date,
+                avgResponseTime: avg,
+                minResponseTime: min,
+                maxResponseTime: max,
             };
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-            });
-        }
+        });
+
+        return {
+            message: "Response time trends retrieved successfully",
+            data: trends,
+        };
     }),
 
     // Get endpoint health summary
     getEndpointHealthSummary: protectedProcedure.query(async ({ ctx }) => {
-        try {
-            const endpoints = await ctx.prisma.endpoint.findMany({
-                where: {
-                    project: { userId: ctx.session.user.id },
-                    isDeleted: false,
-                },
-                select: {
-                    id: true,
-                    name: true,
-                    url: true,
-                    lastStatus: true,
-                    lastCheckedAt: true,
-                    checkInterval: true,
-                    project: {
-                        select: {
-                            projectName: true,
-                        },
-                    },
-                    _count: {
-                        select: {
-                            logs: true,
-                        },
+        const endpoints = await ctx.prisma.endpoint.findMany({
+            where: {
+                project: { userId: ctx.session.user.id },
+                isDeleted: false,
+            },
+            select: {
+                id: true,
+                name: true,
+                url: true,
+                lastStatus: true,
+                lastCheckedAt: true,
+                checkInterval: true,
+                project: {
+                    select: {
+                        projectName: true,
                     },
                 },
-                orderBy: {
-                    lastCheckedAt: 'desc',
+                _count: {
+                    select: {
+                        logs: true,
+                    },
                 },
-            });
+            },
+            orderBy: {
+                lastCheckedAt: 'desc',
+            },
+        });
 
-            // Get last 24 hours uptime for each endpoint
-            const last24Hours = new Date();
-            last24Hours.setHours(last24Hours.getHours() - 24);
+        // Get last 24 hours uptime for each endpoint
+        const last24Hours = new Date();
+        last24Hours.setHours(last24Hours.getHours() - 24);
 
-            const endpointHealth = await Promise.all(
-                endpoints.map(async (endpoint) => {
-                    const [upCount, downCount] = await Promise.all([
-                        ctx.prisma.log.count({
-                            where: {
-                                endpointId: endpoint.id,
-                                status: 'UP',
-                                checkedAt: { gte: last24Hours },
-                            },
-                        }),
-                        ctx.prisma.log.count({
-                            where: {
-                                endpointId: endpoint.id,
-                                status: 'DOWN',
-                                checkedAt: { gte: last24Hours },
-                            },
-                        }),
-                    ]);
+        const endpointHealth = await Promise.all(
+            endpoints.map(async (endpoint) => {
+                const [upCount, downCount] = await Promise.all([
+                    ctx.prisma.log.count({
+                        where: {
+                            endpointId: endpoint.id,
+                            status: 'UP',
+                            checkedAt: { gte: last24Hours },
+                        },
+                    }),
+                    ctx.prisma.log.count({
+                        where: {
+                            endpointId: endpoint.id,
+                            status: 'DOWN',
+                            checkedAt: { gte: last24Hours },
+                        },
+                    }),
+                ]);
 
-                    const totalChecks = upCount + downCount;
-                    const uptimePercentage = totalChecks > 0
-                        ? ((upCount / totalChecks) * 100).toFixed(2)
-                        : "0.00";
+                const totalChecks = upCount + downCount;
+                const uptimePercentage = totalChecks > 0
+                    ? ((upCount / totalChecks) * 100).toFixed(2)
+                    : "0.00";
 
-                    return {
-                        ...endpoint,
-                        uptime24h: `${uptimePercentage}%`,
-                        checks24h: totalChecks,
-                    };
-                })
-            );
+                return {
+                    ...endpoint,
+                    uptime24h: `${uptimePercentage}%`,
+                    checks24h: totalChecks,
+                };
+            })
+        );
 
-            return {
-                message: "Endpoint health summary retrieved successfully",
-                data: endpointHealth,
-            };
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-            });
-        }
+        return {
+            message: "Endpoint health summary retrieved successfully",
+            data: endpointHealth,
+        };
     }),
 
     // Get notification statistics
@@ -492,49 +464,42 @@ export const dashboardAnalysis = createTRPCRouter({
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
 
-        try {
-            const [totalNotifications, sentNotifications, failedNotifications] = await Promise.all([
-                ctx.prisma.notification.count({
-                    where: {
-                        endpoint: { project: { userId: ctx.session.user.id } },
-                        sentAt: { gte: startDate },
-                    },
-                }),
-                ctx.prisma.notification.count({
-                    where: {
-                        endpoint: { project: { userId: ctx.session.user.id } },
-                        status: 'SEND',
-                        sentAt: { gte: startDate },
-                    },
-                }),
-                ctx.prisma.notification.count({
-                    where: {
-                        endpoint: { project: { userId: ctx.session.user.id } },
-                        status: 'FAIL',
-                        sentAt: { gte: startDate },
-                    },
-                }),
-            ]);
-
-            const successRate = totalNotifications > 0
-                ? ((sentNotifications / totalNotifications) * 100).toFixed(2)
-                : "0.00";
-
-            return {
-                message: "Notification statistics retrieved successfully",
-                data: {
-                    total: totalNotifications,
-                    sent: sentNotifications,
-                    failed: failedNotifications,
-                    successRate: `${successRate}%`,
+        const [totalNotifications, sentNotifications, failedNotifications] = await Promise.all([
+            ctx.prisma.notification.count({
+                where: {
+                    endpoint: { project: { userId: ctx.session.user.id } },
+                    sentAt: { gte: startDate },
                 },
-            };
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-            });
-        }
+            }),
+            ctx.prisma.notification.count({
+                where: {
+                    endpoint: { project: { userId: ctx.session.user.id } },
+                    status: 'SEND',
+                    sentAt: { gte: startDate },
+                },
+            }),
+            ctx.prisma.notification.count({
+                where: {
+                    endpoint: { project: { userId: ctx.session.user.id } },
+                    status: 'FAIL',
+                    sentAt: { gte: startDate },
+                },
+            }),
+        ]);
+
+        const successRate = totalNotifications > 0
+            ? ((sentNotifications / totalNotifications) * 100).toFixed(2)
+            : "0.00";
+
+        return {
+            message: "Notification statistics retrieved successfully",
+            data: {
+                total: totalNotifications,
+                sent: sentNotifications,
+                failed: failedNotifications,
+                successRate: `${successRate}%`,
+            },
+        };
     }),
 
     // Get top slowest endpoints
@@ -549,64 +514,57 @@ export const dashboardAnalysis = createTRPCRouter({
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
 
-        try {
-            const slowestEndpoints = await ctx.prisma.log.groupBy({
-                by: ['endpointId'],
-                where: {
-                    endpoint: {
-                        project: { userId: ctx.session.user.id },
-                        isDeleted: false,
-                    },
-                    checkedAt: { gte: startDate },
-                    responseTime: { not: null },
+        const slowestEndpoints = await ctx.prisma.log.groupBy({
+            by: ['endpointId'],
+            where: {
+                endpoint: {
+                    project: { userId: ctx.session.user.id },
+                    isDeleted: false,
                 },
+                checkedAt: { gte: startDate },
+                responseTime: { not: null },
+            },
+            _avg: {
+                responseTime: true,
+            },
+            orderBy: {
                 _avg: {
-                    responseTime: true,
+                    responseTime: 'desc',
                 },
-                orderBy: {
-                    _avg: {
-                        responseTime: 'desc',
-                    },
-                },
-                take: limit,
-            });
+            },
+            take: limit,
+        });
 
-            const endpointsWithDetails = await Promise.all(
-                slowestEndpoints.map(async (log) => {
-                    const endpoint = await ctx.prisma.endpoint.findUnique({
-                        where: { id: log.endpointId! },
-                        select: {
-                            name: true,
-                            url: true,
-                            project: {
-                                select: {
-                                    projectName: true,
-                                },
+        const endpointsWithDetails = await Promise.all(
+            slowestEndpoints.map(async (log) => {
+                const endpoint = await ctx.prisma.endpoint.findUnique({
+                    where: { id: log.endpointId! },
+                    select: {
+                        name: true,
+                        url: true,
+                        project: {
+                            select: {
+                                projectName: true,
                             },
                         },
-                    });
+                    },
+                });
 
-                    return {
-                        endpointId: log.endpointId,
-                        name: endpoint?.name,
-                        url: endpoint?.url,
-                        projectName: endpoint?.project?.projectName,
-                        avgResponseTime: log._avg.responseTime
-                            ? Math.round(log._avg.responseTime)
-                            : null,
-                    };
-                })
-            );
+                return {
+                    endpointId: log.endpointId,
+                    name: endpoint?.name,
+                    url: endpoint?.url,
+                    projectName: endpoint?.project?.projectName,
+                    avgResponseTime: log._avg.responseTime
+                        ? Math.round(log._avg.responseTime)
+                        : null,
+                };
+            })
+        );
 
-            return {
-                message: "Slowest endpoints retrieved successfully",
-                data: endpointsWithDetails,
-            };
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-            });
-        }
+        return {
+            message: "Slowest endpoints retrieved successfully",
+            data: endpointsWithDetails,
+        };
     }),
 });

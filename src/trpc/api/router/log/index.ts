@@ -129,46 +129,38 @@ export const logs = createTRPCRouter({
             })
         )
         .query(async ({ ctx, input }) => {
-            try {
-                const logs = await ctx.prisma.log.findMany({
-                    where: {
-                        endpoint: {
-                            project: { userId: ctx.session.user.id },
+            const logs = await ctx.prisma.log.findMany({
+                where: {
+                    endpoint: {
+                        project: { userId: ctx.session.user.id },
+                    },
+                },
+                select: {
+                    id: true,
+                    status: true,
+                    httpCode: true,
+                    responseTime: true,
+                    errorMessage: true,
+                    checkedAt: true,
+                    dnsStatus: true,
+                    sslValid: true,
+                    endpoint: {
+                        select: {
+                            name: true,
+                            url: true,
                         },
                     },
-                    select: {
-                        id: true,
-                        status: true,
-                        httpCode: true,
-                        responseTime: true,
-                        errorMessage: true,
-                        checkedAt: true,
-                        dnsStatus: true,
-                        sslValid: true,
-                        endpoint: {
-                            select: {
-                                name: true,
-                                url: true,
-                            },
-                        },
-                    },
-                    take: input.limit,
-                    orderBy: {
-                        checkedAt: "desc",
-                    },
-                });
+                },
+                take: input.limit,
+                orderBy: {
+                    checkedAt: "desc",
+                },
+            });
 
-                return {
-                    message: "Recent logs retrieved successfully",
-                    data: logs,
-                };
-            } catch (error: unknown) {
-                throw new TRPCError({
-                    code: "INTERNAL_SERVER_ERROR",
-                    message:
-                        error instanceof Error ? error.message : "Unknown error",
-                });
-            }
+            return {
+                message: "Recent logs retrieved successfully",
+                data: logs,
+            };
         }),
 
     // GET - Get single log by ID with full details
@@ -177,50 +169,42 @@ export const logs = createTRPCRouter({
             logId: z.string().min(1, "Log ID is required"),
         })
     ).query(async ({ ctx, input }) => {
-        try {
-            const log = await ctx.prisma.log.findFirst({
-                where: {
-                    id: input.logId,
-                    endpoint: {
-                        project: { userId: ctx.session.user.id },
-                    },
+        const log = await ctx.prisma.log.findFirst({
+            where: {
+                id: input.logId,
+                endpoint: {
+                    project: { userId: ctx.session.user.id },
                 },
-                include: {
-                    endpoint: {
-                        select: {
-                            id: true,
-                            name: true,
-                            url: true,
-                            checkInterval: true,
-                            project: {
-                                select: {
-                                    id: true,
-                                    projectName: true,
-                                },
+            },
+            include: {
+                endpoint: {
+                    select: {
+                        id: true,
+                        name: true,
+                        url: true,
+                        checkInterval: true,
+                        project: {
+                            select: {
+                                id: true,
+                                projectName: true,
                             },
                         },
                     },
                 },
-            });
+            },
+        });
 
-            if (!log) {
-                throw new TRPCError({
-                    code: "NOT_FOUND",
-                    message: "Log not found",
-                });
-            }
-
-            return {
-                message: "Log retrieved successfully",
-                data: log,
-            };
-        } catch (error: unknown) {
-            if (error instanceof TRPCError) throw error;
+        if (!log) {
             throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
+                code: "NOT_FOUND",
+                message: "Log not found",
             });
         }
+
+        return {
+            message: "Log retrieved successfully",
+            data: log,
+        };
     }),
 
     // DELETE - Bulk delete old logs (cleanup utility)
@@ -230,33 +214,26 @@ export const logs = createTRPCRouter({
             endpointId: z.string().optional(),
         }).optional()
     ).mutation(async ({ ctx, input }) => {
-        try {
-            const daysToKeep = input?.daysToKeep ?? 90;
-            const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
+        const daysToKeep = input?.daysToKeep ?? 90;
+        const cutoffDate = new Date(Date.now() - daysToKeep * 24 * 60 * 60 * 1000);
 
-            const whereClause: any = {
-                endpoint: { project: { userId: ctx.session.user.id } },
-                checkedAt: { lt: cutoffDate },
-            };
+        const whereClause: any = {
+            endpoint: { project: { userId: ctx.session.user.id } },
+            checkedAt: { lt: cutoffDate },
+        };
 
-            if (input?.endpointId) {
-                whereClause.endpointId = input.endpointId;
-            }
-
-            const deletedLogs = await ctx.prisma.log.deleteMany({
-                where: whereClause,
-            });
-
-            return {
-                message: `Successfully deleted ${deletedLogs.count} old logs`,
-                count: deletedLogs.count,
-            };
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-            });
+        if (input?.endpointId) {
+            whereClause.endpointId = input.endpointId;
         }
+
+        const deletedLogs = await ctx.prisma.log.deleteMany({
+            where: whereClause,
+        });
+
+        return {
+            message: `Successfully deleted ${deletedLogs.count} old logs`,
+            count: deletedLogs.count,
+        };
     }),
 
     // GET - Export logs as CSV data
@@ -270,82 +247,75 @@ export const logs = createTRPCRouter({
             limit: z.number().int().min(1).max(10000).default(1000),
         }).optional()
     ).query(async ({ ctx, input }) => {
-        try {
-            const whereClause: any = {
-                endpoint: { project: { userId: ctx.session.user.id } },
+        const whereClause: any = {
+            endpoint: { project: { userId: ctx.session.user.id } },
+        };
+
+        if (input?.endpointId) {
+            whereClause.endpointId = input.endpointId;
+        }
+
+        if (input?.projectId) {
+            whereClause.endpoint = {
+                ...whereClause.endpoint,
+                projectId: input.projectId,
             };
+        }
 
-            if (input?.endpointId) {
-                whereClause.endpointId = input.endpointId;
+        if (input?.status) {
+            whereClause.status = input.status;
+        }
+
+        if (input?.startDate || input?.endDate) {
+            whereClause.checkedAt = {};
+            if (input.startDate) {
+                whereClause.checkedAt.gte = input.startDate;
             }
-
-            if (input?.projectId) {
-                whereClause.endpoint = {
-                    ...whereClause.endpoint,
-                    projectId: input.projectId,
-                };
+            if (input.endDate) {
+                whereClause.checkedAt.lte = input.endDate;
             }
+        }
 
-            if (input?.status) {
-                whereClause.status = input.status;
-            }
-
-            if (input?.startDate || input?.endDate) {
-                whereClause.checkedAt = {};
-                if (input.startDate) {
-                    whereClause.checkedAt.gte = input.startDate;
-                }
-                if (input.endDate) {
-                    whereClause.checkedAt.lte = input.endDate;
-                }
-            }
-
-            const logs = await ctx.prisma.log.findMany({
-                where: whereClause,
-                include: {
-                    endpoint: {
-                        select: {
-                            name: true,
-                            url: true,
-                            project: {
-                                select: {
-                                    projectName: true,
-                                },
+        const logs = await ctx.prisma.log.findMany({
+            where: whereClause,
+            include: {
+                endpoint: {
+                    select: {
+                        name: true,
+                        url: true,
+                        project: {
+                            select: {
+                                projectName: true,
                             },
                         },
                     },
                 },
-                orderBy: { checkedAt: 'desc' },
-                take: input?.limit ?? 1000,
-            });
+            },
+            orderBy: { checkedAt: 'desc' },
+            take: input?.limit ?? 1000,
+        });
 
-            // Format for CSV export (frontend will handle actual CSV generation)
-            const exportData = logs.map(log => ({
-                timestamp: log.checkedAt.toISOString(),
-                endpoint: log.endpoint?.name ?? "Unknown",
-                url: log.endpoint?.url ?? "",
-                project: log.endpoint?.project?.projectName ?? "",
-                status: log.status,
-                httpCode: log.httpCode ?? "",
-                responseTime: log.responseTime ?? "",
-                dnsStatus: log.dnsStatus,
-                sslValid: log.sslValid,
-                sslExpiry: log.sslExpiry?.toISOString() ?? "",
-                ip: log.ip ?? "",
-                errorMessage: log.errorMessage ?? "",
-                contentLength: log.contentLength ?? "",
-            }));
+        // Format for CSV export (frontend will handle actual CSV generation)
+        const exportData = logs.map(log => ({
+            timestamp: log.checkedAt.toISOString(),
+            endpoint: log.endpoint?.name ?? "Unknown",
+            url: log.endpoint?.url ?? "",
+            project: log.endpoint?.project?.projectName ?? "",
+            status: log.status,
+            httpCode: log.httpCode ?? "",
+            responseTime: log.responseTime ?? "",
+            dnsStatus: log.dnsStatus,
+            sslValid: log.sslValid,
+            sslExpiry: log.sslExpiry?.toISOString() ?? "",
+            ip: log.ip ?? "",
+            errorMessage: log.errorMessage ?? "",
+            contentLength: log.contentLength ?? "",
+        }));
 
-            return {
-                message: `Exported ${exportData.length} logs`,
-                data: exportData,
-                count: exportData.length,
-            };
-        } catch (error: unknown) {
-            throw new TRPCError({
-                code: "INTERNAL_SERVER_ERROR",
-                message: error instanceof Error ? error.message : "Unknown error",
-            });
-        }
+        return {
+            message: `Exported ${exportData.length} logs`,
+            data: exportData,
+            count: exportData.length,
+        };
     }),
 });
