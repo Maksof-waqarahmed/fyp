@@ -46,7 +46,7 @@ const TerminalComp = ({ data }: TerminalProps) => {
             </CardHeader>
 
             <CardContent className="px-4 pb-4 flex-1 min-h-0">
-                <div className="h-full max-h-100 overflow-y-auto font-mono text-xs space-y-1 pr-1
+                <div className="h-full max-h-[800px] overflow-y-auto font-mono text-xs space-y-1 pr-1
                     scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
 
                     {data.length === 0 ? (

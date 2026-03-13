@@ -4,6 +4,7 @@ import {
   Bot,
   Frame,
   LayoutDashboard,
+  Settings,
   Settings2,
   SquareTerminal
 } from "lucide-react"
@@ -56,6 +57,11 @@ const data = {
           icon: Settings2,
         },
       ],
+    },
+    {
+      title: "User Settings",
+      url: "/dashboard/user-setting",
+      icon: Settings,
     },
     {
       title: "AI Assistant",
