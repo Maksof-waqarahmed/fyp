@@ -31,16 +31,27 @@ export async function runEndpointMonitoring() {
                 if (httpResult.status === "DOWN") {
                     console.log(`🔴 ${endpoint.url} is DOWN — sending alerts`);
 
-                    
+                    // Only send alerts if notifications are enabled (isActive = true)
+                    const isNotificationsEnabled = setting?.isActive ?? true;
 
-                    if (setting?.email) {
-                        const emailResult = await sendEmailAlert(setting.email, `🔴 ${endpoint.url} is DOWN`);
-                        await monitoringService.createNotification("EMAIL", `🔴 ${endpoint.url} is DOWN`, endpoint, emailResult);
-                    }
+                    if (isNotificationsEnabled) {
+                        if (setting?.email) {
+                            const emailResult = await sendEmailAlert(setting.email, `🔴 ${endpoint.url} is DOWN`);
+                            await monitoringService.createNotification("EMAIL", `🔴 ${endpoint.url} is DOWN`, endpoint, emailResult);
+                            console.log(`✅ Email alert sent to ${setting.email}`);
+                        } else {
+                            console.log(`⚠️  No email configured for user ${endpoint.project.user.email}`);
+                        }
 
-                    if (hasSlack && slackWebhook) {
-                        const slackResult = await sendSlackAlert(slackWebhook, `🔴 ${endpoint.url} is DOWN`);
-                        await monitoringService.createNotification("SLACK", `🔴 ${endpoint.url} is DOWN`, endpoint, slackResult);
+                        if (hasSlack && slackWebhook) {
+                            const slackResult = await sendSlackAlert(slackWebhook, `🔴 ${endpoint.url} is DOWN`);
+                            await monitoringService.createNotification("SLACK", `🔴 ${endpoint.url} is DOWN`, endpoint, slackResult);
+                            console.log(`✅ Slack alert sent`);
+                        } else {
+                            console.log(`⚠️  No Slack webhook configured`);
+                        }
+                    } else {
+                        console.log(`⚠️  Notifications are disabled for user ${endpoint.project.user.email}`);
                     }
                 }
 

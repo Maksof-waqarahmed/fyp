@@ -28,6 +28,7 @@ export type EndpointRef = {
                 slackWebhook: string | null;
                 slackWebhookIv: string | null;
                 slackWebhookAuthTag: string | null;
+                isActive: boolean;
             } | null;
         };
     };
@@ -57,6 +58,7 @@ export class MonitoringService {
                                             slackWebhook: true,
                                             slackWebhookIv: true,
                                             slackWebhookAuthTag: true,
+                                            isActive: true,
                                         }
                                     }
                                 }
