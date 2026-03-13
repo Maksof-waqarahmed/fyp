@@ -25,7 +25,7 @@ const UserSetting = ({ data }: UserProps) => {
     const router = useRouter()
     const [email, setEmail] = useState(data.email)
     const [slackWebhook, setSlackWebhook] = useState(data.slackWebhook)
-    const [whatsappNumber, setWhatsappNumber] = useState(data.whatsappNumber)
+    // const [whatsappNumber, setWhatsappNumber] = useState(data.whatsappNumber)
     const [isActive, setIsActive] = useState(data.isActive)
     const [testingChannel, setTestingChannel] = useState<string | null>(null)
 
@@ -72,9 +72,9 @@ const UserSetting = ({ data }: UserProps) => {
         if (slackWebhook && slackWebhook !== data.slackWebhook) {
             payload.slackWebhook = slackWebhook
         }
-        if (whatsappNumber && whatsappNumber !== data.whatsappNumber) {
-            payload.whatsappNumber = whatsappNumber
-        }
+        // if (whatsappNumber && whatsappNumber !== data.whatsappNumber) {
+        //     payload.whatsappNumber = whatsappNumber
+        // }
 
         if (Object.keys(payload).length === 0) {
             toast.info("No changes to save")
