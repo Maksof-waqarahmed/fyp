@@ -244,8 +244,14 @@ export const dashboardAnalysis = createTRPCRouter({
 
                     // Alerts and upcoming
                     alerts: {
-                        recentDownEndpoints,
-                        upcomingChecks,
+                        recentDownEndpoints: recentDownEndpoints.map(ep => ({
+                            ...ep,
+                            lastCheckedAt: ep.lastCheckedAt?.toISOString() ?? null,
+                        })),
+                        upcomingChecks: upcomingChecks.map(ep => ({
+                            ...ep,
+                            nextCheckAt: ep.nextCheckAt?.toISOString() ?? null,
+                        })),
                     },
                 },
             };
