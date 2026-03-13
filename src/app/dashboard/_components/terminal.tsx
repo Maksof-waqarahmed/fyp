@@ -63,7 +63,7 @@ const TerminalComp = ({ data }: TerminalProps) => {
                                 <span className="text-zinc-600 text-[10px] shrink-0">
                                     {new Date(log.checkedAt).toLocaleTimeString()}
                                 </span>
-                                <span className={`font-semibold w-16 shrink-0 ${getStatusColor(log.status)}`}>
+                                <span className={`font-semibold w-36 shrink-0 ${getStatusColor(log.status)}`}>
                                     {log.status}
                                 </span>
                                 <span className={`shrink-0 ${getHttpColor(log.httpCode)}`}>

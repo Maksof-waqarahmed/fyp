@@ -17,7 +17,7 @@ const Main = async () => {
         api.dashboardAnalysis.getAnalysis(),
         api.dashboardAnalysis.getUptimeTrends({ days: 7 }),
         api.dashboardAnalysis.getResponseTimeTrends({ days: 7 }),
-        api.logs.getRecentLogs({ limit: 5 }),
+        api.logs.getRecentLogs({ limit: 10 }),
     ])
 
     const downEndpoints = analysis.data.alerts.recentDownEndpoints

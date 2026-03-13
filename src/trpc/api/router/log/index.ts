@@ -191,7 +191,7 @@ export const logs = createTRPCRouter({
     getRecentLogs: protectedProcedure
         .input(
             z.object({
-                limit: z.number().int().min(1).max(5).default(5),
+                limit: z.number().int().min(1).max(10).default(10),
             })
         )
         .query(async ({ ctx, input }) => {
