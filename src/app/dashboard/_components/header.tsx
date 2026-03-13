@@ -23,13 +23,14 @@ const Header = async () => {
                                 <p className="text-xs text-muted-foreground">Have a productive day</p>
                             </div>
                             <div className="h-10 w-10 rounded-full from-primary to-primary/80 flex items-center justify-center overflow-hidden border-2 border-primary">
-                                <Image
-                                    src={profile || ""}
-                                    alt="profile"
-                                    width={100}
-                                    height={100}
-                                    className="w-full h-full object-cover"
-                                />
+                                {profile && (
+                                    <Image
+                                        src={profile || ""}
+                                        alt="profile"
+                                        width={100}
+                                        height={100}
+                                        className="w-full h-full object-cover"
+                                    />)}
                             </div>
 
                         </div>

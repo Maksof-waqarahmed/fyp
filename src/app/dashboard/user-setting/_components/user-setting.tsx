@@ -120,7 +120,7 @@ const UserSetting = ({ data }: UserProps) => {
                         <Switch
                             checked={isActive}
                             onCheckedChange={handleToggleNotifications}
-                            disabled={toggleNotificationsMutation.isLoading}
+                            disabled={toggleNotificationsMutation.isPending}
                         />
                     </div>
                 </CardHeader>
@@ -236,7 +236,7 @@ const UserSetting = ({ data }: UserProps) => {
                 </Card>
 
                 {/* WhatsApp Settings */}
-                <Card className={`border-none shadow-sm rounded-2xl transition-opacity ${!isActive ? 'opacity-50' : ''}`}>
+                {/* <Card className={`border-none shadow-sm rounded-2xl transition-opacity ${!isActive ? 'opacity-50' : ''}`}>
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-base">
                             <div className="h-9 w-9 rounded-lg bg-green-50 flex items-center justify-center">
@@ -284,18 +284,18 @@ const UserSetting = ({ data }: UserProps) => {
                             )}
                         </Button>
                     </CardContent>
-                </Card>
+                </Card> */}
             </div>
 
             {/* Save Button */}
             <div className="flex items-center justify-end gap-3 sticky bottom-6 pt-4">
                 <Button
                     onClick={handleSaveSettings}
-                    disabled={updateSettingsMutation.isLoading || !isActive}
+                    disabled={updateSettingsMutation.isPending || !isActive}
                     size="lg"
                     className="rounded-xl shadow-lg"
                 >
-                    {updateSettingsMutation.isLoading ? (
+                    {updateSettingsMutation.isPending ? (
                         <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                             Saving...
@@ -355,7 +355,7 @@ const UserSetting = ({ data }: UserProps) => {
                             )}
                         </div>
 
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-background">
+                        {/* <div className="flex items-center justify-between p-3 rounded-xl bg-background">
                             <div className="flex items-center gap-3">
                                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm font-medium">WhatsApp</span>
@@ -371,7 +371,7 @@ const UserSetting = ({ data }: UserProps) => {
                                     <span className="text-muted-foreground">Not configured</span>
                                 </div>
                             )}
-                        </div>
+                        </div> */}
                     </div>
                 </CardContent>
             </Card>

@@ -115,7 +115,7 @@ model Setting {
   slackWebhookIv      String?
   slackWebhookAuthTag String?
   whatsappNumber      String?
-  isActive            Boolean @default(true)
+  isActive            Boolean @default(false)
   userId              String
   user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 

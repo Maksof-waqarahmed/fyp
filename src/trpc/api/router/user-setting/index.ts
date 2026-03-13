@@ -1,5 +1,6 @@
 
 import { decrypt, encrypt } from "@/lib/enc-dec"
+import { sendEmailAlert, sendSlackAlert } from "@/services/alert-services"
 import { createTRPCRouter, protectedProcedure } from "@/trpc/trpc"
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
@@ -136,37 +137,27 @@ export const userSetting = createTRPCRouter({
                 }
             });
 
-            if (!setting) {
-                throw new TRPCError({
-                    code: "NOT_FOUND",
-                    message: "Settings not found",
-                });
-            }
-
-            if (input.channel === "email" && !setting.email) {
+            if (input.channel === "email" && !setting?.email) {
                 throw new TRPCError({
                     code: "BAD_REQUEST",
                     message: "Email not configured",
                 });
             }
 
-            if (input.channel === "slack" && !setting.slackWebhook) {
+            if (input.channel === "slack" && !setting?.slackWebhook) {
                 throw new TRPCError({
                     code: "BAD_REQUEST",
                     message: "Slack webhook not configured",
                 });
             }
 
-            if (input.channel === "whatsapp" && !setting.whatsappNumber) {
-                throw new TRPCError({
-                    code: "BAD_REQUEST",
-                    message: "WhatsApp number not configured",
-                });
+            if (input.channel === "email") {
+                await sendEmailAlert(setting?.email || '', `Test notification sent to ${input.channel} successfully`)
             }
 
-            // Here you would implement actual notification sending logic
-            // For now, just return success
-            // TODO: Implement actual notification sending
+            if (input.channel === "slack") {
+                await sendSlackAlert(input.channel || '', `Test notification sent to ${input.channel} successfully`)
+            }
 
             return {
                 message: `Test notification sent to ${input.channel} successfully`,
