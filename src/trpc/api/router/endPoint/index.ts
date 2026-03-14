@@ -226,6 +226,40 @@ export const endpoint = createTRPCRouter({
         }
     }),
 
+    getEndpointsByProject: protectedProcedure.input(
+        z.object({
+            projectId: z.string().min(1, "Project ID is required"),
+        })
+    ).query(async ({ ctx, input }) => {
+        const projectExists = await ctx.prisma.project.findFirst({
+            where: { id: input.projectId, userId: ctx.session.user.id, isDeleted: false },
+        });
+
+        if (!projectExists) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+        }
+
+        const endpoints = await ctx.prisma.endpoint.findMany({
+            where: { projectId: input.projectId, isDeleted: false },
+            select: {
+                id: true,
+                name: true,
+                url: true,
+                checkInterval: true,
+                lastStatus: true,
+                lastCheckedAt: true,
+                nextCheckAt: true,
+                createdAt: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return {
+            message: "Endpoints retrieved successfully",
+            data: endpoints,
+        }
+    }),
+
     deleteEndPoint: protectedProcedure.input(
         z.object({
             endpointID: z.string().min(1, "Endpoint ID is required"),

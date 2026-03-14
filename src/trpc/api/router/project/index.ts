@@ -31,35 +31,49 @@ export const project = createTRPCRouter({
     getAllProjects: protectedProcedure.input(
         z.object({
             page: z.number().int().min(1).default(1),
-            limit: z.number().int().min(1).max(100).default(2),
+            limit: z.number().int().min(1).max(100).default(10),
+            search: z.string().optional(),
+            fromDate: z.string().optional(),
+            toDate: z.string().optional(),
         })
     ).query(async ({ ctx, input }) => {
-        const { page, limit } = input;
+        const { page, limit, search, fromDate, toDate } = input;
         const skip = (page - 1) * limit;
 
+        const where = {
+            userId: ctx.session.user.id,
+            isDeleted: false,
+            ...(search && {
+                projectName: { contains: search, mode: 'insensitive' as const }
+            }),
+            ...((fromDate || toDate) && {
+                createdAt: {
+                    ...(fromDate && { gte: new Date(fromDate) }),
+                    ...(toDate && { lte: new Date(new Date(toDate).setHours(23, 59, 59, 999)) }),
+                }
+            }),
+        };
+
         const projects = await ctx.prisma.project.findMany({
-            where: {
-                userId: ctx.session.user.id,
-                isDeleted: false
-            },
+            where,
             select: {
                 id: true,
                 projectName: true,
                 description: true,
                 createdAt: true,
                 updatedAt: true,
+                _count: {
+                    select: {
+                        endpoints: { where: { isDeleted: false } }
+                    }
+                }
             },
             skip,
             take: limit,
             orderBy: { createdAt: 'desc' },
         })
 
-        const totalProjects = await ctx.prisma.project.count({
-            where: {
-                userId: ctx.session.user.id,
-                isDeleted: false
-            }
-        })
+        const totalProjects = await ctx.prisma.project.count({ where })
 
         const totalPages = Math.ceil(totalProjects / limit);
 
