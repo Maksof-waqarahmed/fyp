@@ -27,8 +27,8 @@ interface Project {
     id: string
     projectName: string
     description: string | null
-    createdAt: Date
-    updatedAt: Date
+    createdAt: string
+    updatedAt: string
     _count: { endpoints: number }
 }
 
@@ -38,9 +38,9 @@ interface Endpoint {
     url: string
     checkInterval: number
     lastStatus: HTTPStatus | null
-    lastCheckedAt: Date | null
-    nextCheckAt: Date | null
-    createdAt: Date
+    lastCheckedAt: string | null
+    nextCheckAt: string | null
+    createdAt: string
 }
 
 function statusBadge(status: HTTPStatus | null) {
