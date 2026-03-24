@@ -66,7 +66,7 @@ const CreateProject = ({ data, total }: ProjectsResponse) => {
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <Card className="gap-0 py-3 rounded-sm">
                 <CardContent>
-                  <div className="grid gap-5 md:grid-cols-2">
+                  <div className="grid gap-5 md:grid-cols-2 items-start">
                     <FormField
                       control={form.control}
                       name="projectName"
