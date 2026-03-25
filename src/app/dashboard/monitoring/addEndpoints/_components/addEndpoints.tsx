@@ -347,9 +347,9 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
 
                         {/* Endpoints Form */}
                         <ScrollArea className="h-[270px] overflow-hidden">
-                          <div className="space-y-3 mt-4">
+                          <div className="space-y-5 mt-4">
                             {fields.map((fieldItem, index) => (
-                              <div key={fieldItem.id} className="flex md:flex-row flex-col gap-3 md:items-end md:border-0 border-b">
+                              <div key={fieldItem.id} className="flex md:flex-row flex-col gap-3 md:items-start md:border-0 border-b pb-2">
                                 <FormField
                                   control={form.control}
                                   name={`endPoints.${index}.name`}
@@ -359,7 +359,9 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                                       <FormControl>
                                         <Input {...field} placeholder="Endpoint Name" />
                                       </FormControl>
-                                      <FormMessage />
+                                      <div className="h-4 text-sm">
+                                        <FormMessage />
+                                      </div>
                                     </FormItem>
                                   )}
                                 />
@@ -372,7 +374,9 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                                       <FormControl>
                                         <Input {...field} placeholder="https://example.com" />
                                       </FormControl>
-                                      <FormMessage />
+                                      <div className="h-4 text-sm">
+                                        <FormMessage />
+                                      </div>
                                     </FormItem>
                                   )}
                                 />
@@ -385,12 +389,19 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                                       <FormControl>
                                         <Input type="number" min={1} step={1} {...field} placeholder="Interval" onChange={(e) => field.onChange(Number(e.target.value))} />
                                       </FormControl>
-                                      <FormMessage />
+                                      <div className="h-4 text-sm">
+                                        <FormMessage />
+                                      </div>
                                     </FormItem>
                                   )}
                                 />
-                                <div className="max-sm:w-full max-sm:flex justify-center mb-2">
-                                  <button type="button" className="mt-2 rounded-full bg-red-600 md:w-7 w-16 h-7 flex items-center justify-center" onClick={() => remove(index)}>
+                                <div className="max-sm:w-full max-sm:flex justify-center md:mt-[26px]">
+                                  <button
+                                    type="button"
+                                    disabled={fields.length === 1}
+                                    className="rounded-full md:w-7 w-16 h-7 flex items-center justify-center transition-opacity disabled:opacity-30 disabled:cursor-not-allowed bg-red-600"
+                                    onClick={() => remove(index)}
+                                  >
                                     <Trash2 className="h-4 w-4 text-white" />
                                   </button>
                                 </div>

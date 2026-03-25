@@ -76,7 +76,9 @@ const CreateProject = ({ data, total }: ProjectsResponse) => {
                           <FormControl>
                             <Input placeholder="Project Name" {...field} />
                           </FormControl>
-                          <FormMessage />
+                          <div className="h-4 text-sm">
+                            <FormMessage />
+                          </div>
                         </FormItem>
                       )}
                     />
@@ -89,7 +91,9 @@ const CreateProject = ({ data, total }: ProjectsResponse) => {
                           <FormControl>
                             <Input placeholder="Project Description" {...field} />
                           </FormControl>
-                          <FormMessage />
+                          <div className="h-4 text-sm">
+                            <FormMessage />
+                          </div>
                         </FormItem>
                       )}
                     />
