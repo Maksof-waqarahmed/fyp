@@ -346,7 +346,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                         </div>
 
                         {/* Endpoints Form */}
-                        <ScrollArea className="h-[270px] overflow-hidden">
+                        <ScrollArea className="h-[270px] pr-2">
                           <div className="space-y-5 mt-4">
                             {fields.map((fieldItem, index) => (
                               <div key={fieldItem.id} className="flex md:flex-row flex-col gap-3 md:items-start md:border-0 border-b pb-2">
