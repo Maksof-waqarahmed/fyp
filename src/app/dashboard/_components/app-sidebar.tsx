@@ -1,12 +1,13 @@
 'use client'
 
 import {
-  Bot,
   Frame,
   LayoutDashboard,
   Settings,
   Settings2,
-  SquareTerminal
+  SquareTerminal,
+  ArrowDownNarrowWide,
+  FileChartLine
 } from "lucide-react"
 import * as React from "react"
 
@@ -42,11 +43,6 @@ const data = {
           icon: Frame,
         },
         {
-          title: "Logs",
-          url: "/dashboard/monitoring/logs",
-          icon: SquareTerminal,
-        },
-        {
           title: "All Projects",
           url: "/dashboard/monitoring/allProjects",
           icon: Settings2,
@@ -56,18 +52,28 @@ const data = {
           url: "/dashboard/monitoring/allEndPoints",
           icon: Settings2,
         },
+        {
+          title: "Logs",
+          url: "/dashboard/monitoring/logs",
+          icon: SquareTerminal,
+        },
       ],
+    },
+    {
+      title: "Incidents",
+      url: "/dashboard/incidents",
+      icon: ArrowDownNarrowWide,
+    },
+    {
+      title: "Status Pages",
+      url: "/dashboard/status-pages",
+      icon: FileChartLine,
     },
     {
       title: "User Settings",
       url: "/dashboard/user-setting",
       icon: Settings,
-    },
-    {
-      title: "AI Assistant",
-      url: "/dashboard/chatbot",
-      icon: Bot,
-    },
+    }
   ]
 }
 

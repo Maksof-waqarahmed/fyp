@@ -40,10 +40,14 @@ export class MonitoringService {
 
     async getEndPoints(): Promise<EndpointRef[]> {
         try {
-            return await this.prisma.endpoint.findMany({
+            const endpoints = await this.prisma.endpoint.findMany({
                 where: { isDeleted: false, nextCheckAt: { lte: new Date() } },
                 select: {
-                    id: true, name: true, url: true, checkInterval: true, project: {
+                    id: true,
+                    name: true,
+                    url: true,
+                    checkInterval: true,
+                    project: {
                         select: {
                             projectName: true,
                             id: true,
@@ -67,6 +71,9 @@ export class MonitoringService {
                     }
                 },
             });
+
+            console.log(`📊 Found ${endpoints.length} endpoints due for checking`);
+            return endpoints;
         } catch (error) {
             console.error("❌ Error fetching endpoints:", error);
             return [];
@@ -108,17 +115,21 @@ export class MonitoringService {
 
     async updateEndPoints(endpoint: EndpointRef, httpResult: EndPointType) {
         const now = new Date();
+        const nextCheck = new Date(
+            now.getTime() + Math.max(endpoint.checkInterval, 1) * 60 * 60 * 1000
+        );
+
         try {
             await this.prisma.endpoint.update({
                 where: { id: endpoint.id },
                 data: {
-                    nextCheckAt: new Date(
-                        now.getTime() + Math.max(endpoint.checkInterval, 1) * 60 * 60 * 1000
-                    ),
+                    nextCheckAt: nextCheck,
                     lastCheckedAt: now,
                     lastStatus: httpResult.status,
                 },
             });
+
+            console.log(`✅ Updated ${endpoint.name}: nextCheckAt = ${nextCheck.toLocaleString()}`);
         } catch (error) {
             console.error("❌ Error updating endpoint:", error);
         }

@@ -11,12 +11,17 @@ const WebsiteStatusSchema = z.object({
     responseTime: z.number().nullable(),
     errorMessage: z.string().nullable(),
     dnsStatus: z.string(),
-    ip: z.string(),
+    ip: z.string().nullable(), // Can be null when DNS fails
     sslValid: z.boolean(),
     sslExpiry: z.string().nullable(),
     checkedAt: z.string(),
-    contentHash: z.string(),
+    contentHash: z.string().nullable(), // Can be null when request fails
     contentLength: z.number().nullable(),
+    // New fields for detailed alerts
+    userName: z.string(),
+    projectName: z.string(),
+    endpointName: z.string(),
+    endpointUrl: z.string(),
 });
 
 type WebsiteStatus = z.infer<typeof WebsiteStatusSchema>;
@@ -25,52 +30,56 @@ export async function generateAlert(input: WebsiteStatus) {
     const validInput = WebsiteStatusSchema.parse(input);
 
     const prompt = `
-You are an AI alert generator for a website uptime monitoring system. You will receive a structured input object containing website status information. Your task is to **create a professional, concise, and clear alert message** that can be sent to clients whenever a website is down. The message should highlight key information: website status, error, response time, DNS, IP, SSL, content info, and timestamp. Use a polite and professional tone.
+You are an AI alert generator for a website uptime monitoring system. You will receive a structured input object containing website status information. Your task is to **create a professional, detailed, and clear alert message** that can be sent to clients whenever a website is down. The message should highlight key information: user name, project name, endpoint name/URL, status, error, DNS, SSL, and actionable suggestions.
 
 **Input Object:**
 ${JSON.stringify(validInput, null, 2)}
 
 **Requirements for the Alert Message:**
 1. Only generate the alert if the website status is "DOWN".
-2. Include:
-   - Website status
+2. Start with a greeting using the user's name.
+3. Include:
+   - User name (greeting)
+   - Project name
+   - Endpoint/Route name and URL
+   - Status (DOWN)
    - HTTP code (if any)
-   - Error message
+   - Error message (clear and detailed)
    - Response time (if available)
-   - DNS status and IP
+   - DNS status and IP address
    - SSL status and expiry (if available)
    - Timestamp of the check (in human-readable format)
-3. Format should be friendly but professional, suitable for client emails or Slack messages.
-4. Use bullet points or short lines for clarity.
-5. Avoid technical jargon that clients won’t understand, but include enough info for context.
-6. End the message with a **suggested action**—this should be a short recommendation for the client or developer, e.g., “Check the network connection” or “Verify DNS settings”, without implying that you (the monitoring system) are taking action.
+4. Format should be friendly, professional, and suitable for both emails and Slack messages.
+5. Use emojis sparingly (only for status indicators).
+6. Use bullet points or sections for clarity.
+7. End with a **💡 Suggestion** section—provide 2-3 actionable recommendations based on the specific error.
 
-**Example Input:**
-{
-    "status": "DOWN",
-    "httpCode": null,
-    "responseTime": null,
-    "errorMessage": "Connection timed out",
-    "dnsStatus": "RESOLVED",
-    "ip": "203.0.113.10",
-    "sslValid": false,
-    "sslExpiry": null,
-    "checkedAt": "2026-02-25T10:15:00Z",
-    "contentHash": "abc123",
-    "contentLength": 1024
-}
+**Expected Output Format:**
+👋 Hello [UserName],
 
-**Expected Output Example:**
-🚨 **Website Down Alert**  
+We noticed an issue with your project **[ProjectName]**.
 
-- **Status:** DOWN  
-- **Error:** Connection timed out  
-- **DNS:** RESOLVED  
-- **IP Address:** 203.0.113.10  
-- **SSL:** Invalid / Expiry unknown  
-- **Checked At:** 25 Feb 2026, 10:15 AM UTC  
+🚨 **Endpoint:** [EndpointName]
+**URL:** [EndpointUrl]
 
-**Suggestion:** Give Suggestion for the client or developer according to the error.
+**Status:** DOWN
+**Error:** [Detailed error message]
+**HTTP Code:** [Code or N/A]
+**Response Time:** [Time in ms or N/A]
+**DNS:** [Status]
+**IP Address:** [IP or N/A if null]
+**SSL:** [Valid/Invalid with expiry if available]
+**Checked At:** [Human-readable timestamp]
+
+💡 **Suggestions:**
+- [Suggestion 1 based on the error]
+- [Suggestion 2]
+- [Suggestion 3 if applicable]
+
+Thanks for staying on top of things!
+**Your Monitoring Team**
+
+**Important:** If IP or contentHash is null, show "N/A" in the alert.
 
 Respond ONLY with the formatted alert, no extra text.
 `;
@@ -85,7 +94,7 @@ Respond ONLY with the formatted alert, no extra text.
                 },
             ],
             temperature: 0.3,
-            max_tokens: 300,
+            max_tokens: 600, // Increased for detailed alerts
         });
 
         const alertMessage = response.choices?.[0]?.message?.content ?? "";
@@ -96,24 +105,7 @@ Respond ONLY with the formatted alert, no extra text.
     }
 }
 
-(async () => {
-    const testData: WebsiteStatus = {
-        status: "DOWN",
-        httpCode: null,
-        responseTime: null,
-        errorMessage: "Connection timed out",
-        dnsStatus: "RESOLVED",
-        ip: "203.0.113.10",
-        sslValid: false,
-        sslExpiry: null,
-        checkedAt: new Date().toISOString(),
-        contentHash: "abc123",
-        contentLength: 1024,
-    };
-
-    const alert = await generateAlert(testData);
-    console.log(alert);
-})();
+// Test code removed - alerts will be sent via monitoring service
 
 
 // 👋 Hello [UserName],

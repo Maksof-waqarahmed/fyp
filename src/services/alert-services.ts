@@ -17,14 +17,23 @@ const transporter = nodemailer.createTransport({
 
 export async function sendEmailAlert(
   email: string,
-  message: string
+  message: string,
+  subject: string = "Website Alert"
 ): Promise<SentMessageInfo | null> {
   try {
+    // Convert markdown-style formatting to HTML-friendly format
+    const htmlMessage = message
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold text
+      .replace(/\n/g, '<br>'); // Line breaks
+
     const info = await transporter.sendMail({
-      from: `"AI Monitor" <${process.env.SMTP_USER}>`,
+      from: `"AI Uptime Monitor" <${process.env.SMTP_USER}>`,
       to: email,
-      subject: "Website Alert",
+      subject: subject,
       text: message,
+      html: `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        ${htmlMessage}
+      </div>`,
     });
 
     console.log("📧 Email sent:", info.messageId);

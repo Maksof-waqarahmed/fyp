@@ -3,6 +3,7 @@ import { MonitoringService } from "@/lib/monitoring-service";
 import { decrypt } from "@/lib/enc-dec";
 import prisma from "@/lib/prisma";
 import { checkDNS, checkEndpoint, checkSSL, getContentHash } from "@/lib/log-script";
+import { generateAlert } from "@/services/openAI";
 
 export async function runEndpointMonitoring() {
     try {
@@ -29,23 +30,45 @@ export async function runEndpointMonitoring() {
                 const slackWebhook = hasSlack ? decrypt(setting.slackWebhook!, setting.slackWebhookIv!, setting.slackWebhookAuthTag!) : null;
 
                 if (httpResult.status === "DOWN") {
-                    console.log(`🔴 ${endpoint.url} is DOWN — sending alerts`);
+                    console.log(`🔴 ${endpoint.url} is DOWN — generating AI alert`);
 
                     // Only send alerts if notifications are enabled (isActive = true)
                     const isNotificationsEnabled = setting?.isActive ?? true;
 
                     if (isNotificationsEnabled) {
+                        // Generate AI-powered detailed alert message
+                        const aiAlertMessage = await generateAlert({
+                            status: "DOWN",
+                            httpCode: httpResult.status === "DOWN" ? null : (httpResult as any).statusCode,
+                            responseTime: httpResult.responseTime ?? null,
+                            errorMessage: httpResult.status === "DOWN" ? (httpResult as any).reason : null,
+                            dnsStatus: dnsResult.dnsStatus,
+                            ip: dnsResult.ip,
+                            sslValid: sslResult.sslValid,
+                            sslExpiry: sslResult.sslExpiry ?? null,
+                            checkedAt: new Date().toISOString(),
+                            contentHash: contentResult.hash,
+                            contentLength: contentResult.length || null,
+                            userName: endpoint.project.user.name,
+                            projectName: endpoint.project.projectName,
+                            endpointName: endpoint.name,
+                            endpointUrl: endpoint.url,
+                        });
+
+                        const alertMessage = aiAlertMessage || `🔴 ${endpoint.name} (${endpoint.url}) is DOWN`;
+
                         if (setting?.email) {
-                            const emailResult = await sendEmailAlert(setting.email, `🔴 ${endpoint.url} is DOWN`);
-                            await monitoringService.createNotification("EMAIL", `🔴 ${endpoint.url} is DOWN`, endpoint, emailResult);
+                            const emailSubject = `🚨 Alert: ${endpoint.name} is DOWN - ${endpoint.project.projectName}`;
+                            const emailResult = await sendEmailAlert(setting.email, alertMessage, emailSubject);
+                            await monitoringService.createNotification("EMAIL", alertMessage, endpoint, emailResult);
                             console.log(`✅ Email alert sent to ${setting.email}`);
                         } else {
                             console.log(`⚠️  No email configured for user ${endpoint.project.user.email}`);
                         }
 
                         if (hasSlack && slackWebhook) {
-                            const slackResult = await sendSlackAlert(slackWebhook, `🔴 ${endpoint.url} is DOWN`);
-                            await monitoringService.createNotification("SLACK", `🔴 ${endpoint.url} is DOWN`, endpoint, slackResult);
+                            const slackResult = await sendSlackAlert(slackWebhook, alertMessage);
+                            await monitoringService.createNotification("SLACK", alertMessage, endpoint, slackResult);
                             console.log(`✅ Slack alert sent`);
                         } else {
                             console.log(`⚠️  No Slack webhook configured`);
