@@ -1,0 +1,14 @@
+Refresh Token
+
+GET https://graph.facebook.com/v19.0/oauth/access_token
+?grant_type=fb_exchange_token
+&client_id=APP_ID
+&client_secret=APP_SECRET
+&fb_exchange_token=OLD_LONG_TOKEN
+
+
+GET https://graph.facebook.com/v19.0/oauth/access_token
+?grant_type=fb_exchange_token
+&client_id=APP_ID
+&client_secret=APP_SECRET
+&fb_exchange_token=SHORT_TOKEN
