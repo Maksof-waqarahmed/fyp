@@ -19,6 +19,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { GetAllIncidentsResponse, Incident } from "@/types/incidents.types"
 import { api } from "@/trpc/trpc-server/react"
 import {
     CheckCircle2,
@@ -31,33 +32,8 @@ import Link from "next/link"
 import { useState } from "react"
 import { Pagination } from "../../monitoring/create-project/_components/pagination"
 
-interface Incident {
-    id: string
-    endpointId: string
-    endpointName: string
-    endpointUrl: string
-    projectName: string
-    status: "ongoing" | "resolved"
-    rootCause: string | null
-    startedAt: string
-    resolvedAt: string | null
-    durationMs: number
-    httpCode: number | null
-}
-
 interface IncidentTableProps {
-    initialData: {
-        incidents: Incident[]
-        total: number
-        page: number
-        totalPages: number
-        summary: {
-            total: number
-            ongoing: number
-            resolved: number
-            avgDowntimeMs: number
-        }
-    }
+    initialData: GetAllIncidentsResponse
 }
 
 export default function IncidentTable({ initialData }: IncidentTableProps) {
@@ -92,15 +68,7 @@ export default function IncidentTable({ initialData }: IncidentTableProps) {
     }
 
     return (
-        <div className="w-full space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
-                    <p className="text-muted-foreground mt-1">Monitor and track all endpoint incidents</p>
-                </div>
-            </div>
-
+        <div className="w-full space-y-4">
             {/* Filters */}
             <Card className="p-4">
                 <CardTitle>Filter</CardTitle>

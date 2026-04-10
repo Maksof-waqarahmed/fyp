@@ -23,13 +23,20 @@ export interface EndpointLog {
     contentLength: number | null;
 }
 
+export interface NotificationMetadata {
+    endpointId?: string;
+    projectId?: string;
+    triggeredBy?: string;
+    [key: string]: unknown;
+}
+
 export interface Notification {
     id: string;
     type: string;
     message: string;
     sentAt: Date | null;
     status: AlertStatus;
-    metadata: any;
+    metadata: NotificationMetadata | null;
 }
 
 export interface Endpoint {
