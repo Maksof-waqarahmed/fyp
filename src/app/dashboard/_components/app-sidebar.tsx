@@ -51,12 +51,7 @@ const data = {
           title: "All Endpoints",
           url: "/dashboard/monitoring/allEndPoints",
           icon: Settings2,
-        },
-        {
-          title: "Logs",
-          url: "/dashboard/monitoring/logs",
-          icon: SquareTerminal,
-        },
+        }
       ],
     },
     {
