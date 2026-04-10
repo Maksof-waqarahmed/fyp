@@ -23,12 +23,7 @@ export interface EndpointLog {
     contentLength: number | null;
 }
 
-export interface NotificationMetadata {
-    endpointId?: string;
-    projectId?: string;
-    triggeredBy?: string;
-    [key: string]: unknown;
-}
+export type NotificationMetadata = Record<string, unknown> | null;
 
 export interface Notification {
     id: string;
@@ -36,7 +31,7 @@ export interface Notification {
     message: string;
     sentAt: Date | null;
     status: AlertStatus;
-    metadata: NotificationMetadata | null;
+    metadata: NotificationMetadata;
 }
 
 export interface Endpoint {
