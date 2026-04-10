@@ -116,26 +116,26 @@ export default function IncidentDetailPage() {
                 </Button>
             </div>
 
-            {/* Main Content - Improved Layout */}
+            {/* Main Content - New 2-Row Layout */}
             {currentIncident && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column - Root Cause & Duration */}
-                    <div className="lg:col-span-1 space-y-4">
+                <div className="space-y-6">
+                    {/* Top Row - 4 Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Root Cause Card */}
-                        <Card className="p-5 bg-gradient-to-br from-slate-50 to-white border-2">
-                            <div className="flex items-start gap-3">
-                                <div className="p-2 bg-red-100 rounded-lg">
-                                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-2">
+                            <div className="flex items-start gap-2">
+                                <div className="p-2 bg-red-100 rounded-lg shrink-0">
+                                    <AlertTriangle className="h-4 w-4 text-red-600" />
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 min-w-0">
                                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                                         Root cause
                                     </h3>
-                                    <p className="text-lg font-bold text-gray-900 mt-2">
+                                    <p className="text-sm font-bold text-gray-900 mt-1 line-clamp-2">
                                         {currentIncident.errorMessage || "Unknown Error"}
                                     </p>
                                     {currentIncident.httpCode && (
-                                        <Badge variant="outline" className="mt-3 text-xs">
+                                        <Badge variant="outline" className="mt-2 text-xs">
                                             HTTP {currentIncident.httpCode}
                                         </Badge>
                                     )}
@@ -144,66 +144,45 @@ export default function IncidentDetailPage() {
                         </Card>
 
                         {/* Status Card */}
-                        <Card className="p-5 bg-gradient-to-br from-slate-50 to-white border-2">
-                            <div className="flex items-start gap-3">
-                                <div className={`p-2 rounded-lg ${isDown ? 'bg-red-100' : 'bg-green-100'}`}>
+                        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-2">
+                            <div className="flex items-start gap-2">
+                                <div className={`p-2 rounded-lg shrink-0 ${isDown ? 'bg-red-100' : 'bg-green-100'}`}>
                                     {isDown ? (
-                                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                                        <AlertTriangle className="h-4 w-4 text-red-600" />
                                     ) : (
-                                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
                                     )}
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                                         Status
                                     </h3>
                                     <Badge
-                                        className={`text-base px-3 py-1 ${isDown
+                                        className={`text-sm px-2 py-0.5 mt-1 ${isDown
                                             ? "bg-red-500 text-white hover:bg-red-600"
                                             : "bg-green-500 text-white hover:bg-green-600"
                                             }`}
                                     >
                                         {isDown ? "Ongoing" : "Resolved"}
                                     </Badge>
-                                    <div className="mt-3 space-y-1">
-                                        <p className="text-xs text-muted-foreground">
-                                            Started at {new Date(currentIncident.startedAt).toLocaleString('en-US', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                                timeZoneName: 'short'
-                                            })}
-                                        </p>
-                                        {currentIncident.recoveredAt && (
-                                            <p className="text-xs text-muted-foreground">
-                                                Resolved at {new Date(currentIncident.recoveredAt).toLocaleString('en-US', {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    year: 'numeric',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit',
-                                                    timeZoneName: 'short'
-                                                })}
-                                            </p>
-                                        )}
-                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-2 truncate">
+                                        {new Date(currentIncident.startedAt).toLocaleDateString()}
+                                    </p>
                                 </div>
                             </div>
                         </Card>
 
                         {/* Duration Card */}
-                        <Card className="p-5 bg-gradient-to-br from-slate-50 to-white border-2">
-                            <div className="flex items-start gap-3">
-                                <div className="p-2 bg-blue-100 rounded-lg">
-                                    <Clock className="h-5 w-5 text-blue-600" />
+                        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-2">
+                            <div className="flex items-start gap-2">
+                                <div className="p-2 bg-blue-100 rounded-lg shrink-0">
+                                    <Clock className="h-4 w-4 text-blue-600" />
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                                         Duration
                                     </h3>
-                                    <p className="text-2xl font-bold text-gray-900">
+                                    <p className="text-xl font-bold text-gray-900 mt-1">
                                         {formatDuration(currentIncident.startedAt, currentIncident.recoveredAt || undefined)}
                                     </p>
                                 </div>
@@ -211,45 +190,41 @@ export default function IncidentDetailPage() {
                         </Card>
 
                         {/* Request Card */}
-                        <Card className="p-5 bg-gradient-to-br from-slate-50 to-white border-2">
-                            <div className="flex items-start gap-3">
-                                <div className="p-2 bg-purple-100 rounded-lg">
-                                    <Server className="h-5 w-5 text-purple-600" />
+                        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-2">
+                            <div className="flex items-start gap-2">
+                                <div className="p-2 bg-purple-100 rounded-lg shrink-0">
+                                    <Server className="h-4 w-4 text-purple-600" />
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                                         Request
                                     </h3>
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="secondary" className="font-mono text-xs">
-                                                HEAD
-                                            </Badge>
-                                            <a
-                                                href={endpoint.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-xs text-blue-600 hover:underline truncate flex items-center gap-1"
-                                            >
-                                                {endpoint.url.slice(0, 35)}...
-                                                <ExternalLink className="h-3 w-3" />
-                                            </a>
-                                        </div>
-                                    </div>
+                                    <Badge variant="secondary" className="font-mono text-xs mt-1">
+                                        HEAD
+                                    </Badge>
+                                    <a
+                                        href={endpoint.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 hover:underline truncate flex items-center gap-1 mt-1"
+                                    >
+                                        {endpoint.url.slice(0, 25)}...
+                                        <ExternalLink className="h-3 w-3" />
+                                    </a>
                                 </div>
                             </div>
                         </Card>
                     </div>
 
-                    {/* Right Column - Activity Log & Response */}
-                    <div className="lg:col-span-2 space-y-6">
+                    {/* Bottom Row - Activity Log & Response Side by Side */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Activity Log */}
                         <Card className="p-6 border-2">
                             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                                 <Activity className="h-5 w-5 text-blue-600" />
                                 Activity log
                             </h3>
-                            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                                 {activityLog && activityLog.length > 0 ? (
                                     activityLog.map((log: IncidentLog) => (
                                         <div
@@ -310,13 +285,13 @@ export default function IncidentDetailPage() {
                         </Card>
 
                         {/* Response Details */}
-                        {activityLog && activityLog.length > 0 && (
-                            <Card className="p-6 border-2">
-                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                    <Server className="h-5 w-5 text-purple-600" />
-                                    Response
-                                </h3>
-                                <div className="bg-slate-900 text-slate-100 p-5 rounded-lg font-mono text-sm overflow-x-auto">
+                        <Card className="p-6 border-2">
+                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                <Server className="h-5 w-5 text-purple-600" />
+                                Response
+                            </h3>
+                            {activityLog && activityLog.length > 0 ? (
+                                <div className="bg-slate-900 text-slate-100 p-5 rounded-lg font-mono text-sm overflow-x-auto max-h-[600px] overflow-y-auto">
                                     <pre className="whitespace-pre-wrap break-all">
                                         {JSON.stringify(
                                             {
@@ -334,8 +309,13 @@ export default function IncidentDetailPage() {
                                         )}
                                     </pre>
                                 </div>
-                            </Card>
-                        )}
+                            ) : (
+                                <div className="text-center py-12 text-muted-foreground">
+                                    <Server className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                                    <p>No response data available</p>
+                                </div>
+                            )}
+                        </Card>
                     </div>
                 </div>
             )}

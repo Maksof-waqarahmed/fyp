@@ -75,6 +75,14 @@ This folder follows the Next.js App Router structure. Each subfolder represents 
       - `page.tsx`: Logs page
       - `_components/`: Log display components
 
+  - **`incidents/`**: Incident management (NEW)
+    - **`page.tsx`**: Server component - Incidents main page (fetches initial data)
+    - **`_components/incident-table.tsx`**: Client component - Interactive table with filters, search, pagination
+    - **`[id]/page.tsx`**: Dynamic incident detail page
+      - Shows 4 cards: Root Cause, Status, Duration, Request
+      - Activity log and Response sections side-by-side
+      - Real-time incident tracking
+
 ---
 
 ### 2. **src/components/** - Reusable UI Components
@@ -124,21 +132,27 @@ AI and cron-related services:
 - **`openAI.ts`**: **IMPORTANT - AI Agent Code**
   - OpenAI API integration
   - `generateAlert()` function - Generates AI alert messages when a website goes down
-  - Input: Website status (DOWN/UP, error, DNS, SSL, etc.)
-  - Output: Professional alert message with actionable suggestions
+  - Input: Website status (DOWN/UP, error, DNS, SSL, userName, projectName, endpointName, endpointUrl)
+  - Output: Detailed professional alert message with user/project context and actionable suggestions
   - Uses GPT-4o-mini model
   - Temperature: 0.3 (for consistent responses)
+  - Max tokens: 600 (for detailed responses)
 
 - **`alert-services.ts`**: Alert sending services
-  - Email alerts (via Nodemailer)
+  - Email alerts (via Nodemailer with HTML support)
+  - Dynamic email subjects
   - Slack webhook alerts (encrypted)
+  - SMTP Configuration: Port 587 (TLS) for better reliability
 
 - **`run-monitoring.ts`**: Main monitoring execution script
   - Checks all endpoints
   - Saves results to database
+  - Integrates AI-generated alerts with full context
   - Triggers alerts when needed
 
 - **`cron.ts`**: Cron job setup (for scheduled monitoring)
+  - Runs every 5 minutes (*/5 * * * *)
+  - Prevents excessive notifications
 
 ---
 
@@ -161,7 +175,14 @@ Type-safe API layer that connects frontend and backend:
 - **`trpc.ts`**: tRPC context and middleware setup
 - **`trpc-server/`**: Server-side tRPC configuration
 - **`api/`**: API routes
-  - **`router/`**: Individual routers (project, endpoint, logs, etc.)
+  - **`router/`**: Individual routers
+    - **`project/`**: Project CRUD operations
+    - **`endpoint/`**: Endpoint management
+    - **`log/`**: Log queries and incident management
+      - `getAllIncidentsTable`: Paginated incidents with filters/search
+      - `getEndpointsWithIncidents`: All endpoints with incident counts
+      - `getEndpointIncidentDetail`: Detailed incident info for specific endpoint
+    - **`settings/`**: User settings management
   - **`routes.ts`**: Main router that combines all routes
 
 ---
@@ -199,6 +220,11 @@ Global TypeScript type definitions and interfaces
      - SSL validity and expiry
      - Content hash and length
   9. **Notification**: Record of sent alerts
+  10. **Incident**: Incident tracking (NEW)
+     - Groups consecutive DOWN logs
+     - Tracks startedAt, recoveredAt, duration
+     - Status: ongoing/resolved
+     - Links to endpoint and trigger log
 
   **Enums:**
   - `HTTPStatus`: UP, DOWN, REDIRECT, CLIENT_ERROR, UNKNOWN
@@ -227,25 +253,36 @@ This file contains the main AI agent logic:
   responseTime: number | null
   errorMessage: string | null
   dnsStatus: string
-  ip: string
+  ip: string | null // Can be null when DNS fails
   sslValid: boolean
   sslExpiry: string | null
   checkedAt: string
-  contentHash: string
+  contentHash: string | null // Can be null when request fails
   contentLength: number | null
+  userName: string // User context
+  projectName: string // Project context
+  endpointName: string // Endpoint context
+  endpointUrl: string // URL being monitored
 }
 ```
 
 **AI Prompt Strategy**:
-- Professional and concise alert message
+- Professional and detailed alert message with context
+- Includes user name, project name, endpoint name
 - Key information: status, error, DNS, SSL, timestamp
-- User-friendly language (avoids technical jargon)
-- Actionable suggestion at the end
+- User-friendly language with technical details
+- Actionable suggestions based on error type
+- Formatted for both email (HTML) and Slack
 
 **Output Example**:
 ```
-🚨 Website Down Alert
+🚨 **Website Down Alert for John Doe**
 
+**Project:** Production Monitoring
+**Endpoint:** Main Website
+**URL:** https://example.com
+
+**Issue Details:**
 - Status: DOWN
 - Error: Connection timed out
 - DNS: RESOLVED
@@ -253,7 +290,7 @@ This file contains the main AI agent logic:
 - SSL: Invalid / Expiry unknown
 - Checked At: 25 Feb 2026, 10:15 AM UTC
 
-Suggestion: Check network connection or verify DNS settings
+**Suggestion:** The server appears to be online (DNS resolved) but not responding to requests. Check if the web server is running and firewall rules are correctly configured.
 ```
 
 ---
@@ -321,13 +358,16 @@ The `.env` file contains these variables:
 
 1. ✅ Multi-project monitoring
 2. ✅ URL/endpoint tracking
-3. ✅ Scheduled checks (cron-based)
+3. ✅ Scheduled checks (cron-based every 5 minutes)
 4. ✅ DNS, SSL, HTTP monitoring
-5. ✅ AI-generated alerts (OpenAI)
-6. ✅ Email & Slack notifications
+5. ✅ AI-generated detailed alerts (OpenAI GPT-4o-mini)
+6. ✅ Email (HTML) & Slack notifications
 7. ✅ Real-time logs
 8. ✅ Google/GitHub OAuth
 9. ✅ Encrypted webhook storage
+10. ✅ Incident tracking and management (NEW)
+11. ✅ Incident table with filters, search, pagination
+12. ✅ Detailed incident pages with activity logs
 
 ---
 
@@ -342,7 +382,10 @@ The `.env` file contains these variables:
 | Monitoring Logic | `src/lib/monitoring-service.ts` |
 | Website Check Script | `src/lib/log-script.ts` |
 | Alert Sending | `src/services/alert-services.ts` |
+| Cron Job Setup | `src/services/cron.ts` |
 | API Routes (tRPC) | `src/trpc/api/router/` |
+| Incidents API | `src/trpc/api/router/log/index.ts` |
+| Incidents Page | `src/app/dashboard/incidents/` |
 | Authentication | `src/lib/auth.ts` |
 | Frontend Pages | `src/app/` |
 | UI Components | `src/components/` |

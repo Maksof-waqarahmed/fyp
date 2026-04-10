@@ -1,18 +1,9 @@
 "use client"
 
-import { api } from "@/trpc/trpc-server/react"
-import { Card, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
 import {
     Select,
     SelectContent,
@@ -21,13 +12,20 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import {
-    AlertTriangle,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import { api } from "@/trpc/trpc-server/react"
+import {
     CheckCircle2,
-    Clock,
     ExternalLink,
-    Search,
+    Eye,
     Loader2,
-    Eye
+    Search
 } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
@@ -84,7 +82,6 @@ export default function IncidentTable({ initialData }: IncidentTableProps) {
 
     const incidents = (data?.incidents ?? initialData.incidents) as Incident[]
     const totalPages = data?.totalPages ?? initialData.totalPages
-    const summary = data?.summary ?? initialData.summary
 
     const formatDuration = (ms: number): string => {
         const hours = Math.floor(ms / (1000 * 60 * 60))
