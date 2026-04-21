@@ -442,6 +442,7 @@ export const dashboardAnalysis = createTRPCRouter({
 
                 return {
                     ...endpoint,
+                    lastCheckedAt: endpoint.lastCheckedAt?.toISOString() ?? null,
                     uptime24h: `${uptimePercentage}%`,
                     checks24h: totalChecks,
                 };
