@@ -17,10 +17,11 @@ model User {
   updatedAt     DateTime @updatedAt
   isActive      Boolean  @default(true)
 
-  setting  Setting?
-  sessions Session[]
-  accounts Account[]
-  projects Project[]
+  setting     Setting?
+  sessions    Session[]
+  accounts    Account[]
+  projects    Project[]
+  statusPages StatusPage[]
 
   @@map("user")
 }
@@ -83,6 +84,7 @@ model Project {
   userId      String
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   endpoints   Endpoint[]
+  statusPages StatusPage[] @relation("StatusPageProjects")
 
   @@map("project")
 }
@@ -155,6 +157,21 @@ model Notification {
 
   @@index([endpointId])
   @@map("notification")
+}
+
+model StatusPage {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  description String?
+  isPublic    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects    Project[] @relation("StatusPageProjects")
+
+  @@map("status_page")
 }
 
 enum AlertStatus {
