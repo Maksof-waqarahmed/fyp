@@ -12,7 +12,7 @@ export const endpoint = createTRPCRouter({
                     z.object({
                         name: z.string().trim().min(2),
                         url: z.string().url(),
-                        checkInterval: z.number().int().min(1),
+                        checkInterval: z.number().int().min(5, "Minimum interval is 5 minutes"),
                     })
                 ).min(1),
             })
@@ -50,7 +50,7 @@ export const endpoint = createTRPCRouter({
                     checkInterval: ep.checkInterval,
                     projectId: input.projectID,
                     nextCheckAt: new Date(
-                        Date.now() + ep.checkInterval * 60 * 60 * 1000
+                        Date.now() + ep.checkInterval * 60 * 1000
                     ),
                 }));
 
@@ -188,7 +188,7 @@ export const endpoint = createTRPCRouter({
             endpointID: z.string().min(1, "Endpoint ID is required"),
             name: z.string().trim().min(2, "Name must be at least 2 characters").optional(),
             url: z.string().url("Invalid URL").optional(),
-            checkInterval: z.number().int().min(1).optional(),
+            checkInterval: z.number().int().min(5, "Minimum interval is 5 minutes").optional(),
         })
     ).mutation(async ({ ctx, input }) => {
         const { endpointID, ...updateData } = input;
@@ -211,7 +211,7 @@ export const endpoint = createTRPCRouter({
 
         if (updateData.checkInterval) {
             updatedFields.nextCheckAt = new Date(
-                Date.now() + updateData.checkInterval * 60 * 60 * 1000
+                Date.now() + updateData.checkInterval * 60 * 1000
             );
         }
 

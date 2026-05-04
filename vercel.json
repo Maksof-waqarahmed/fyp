@@ -1,6 +1,0 @@
-{
-  "buildCommand": "pnpm db:generate && pnpm build",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
-  "installCommand": "pnpm install"
-}

@@ -16,6 +16,7 @@ export type EndpointRef = {
     name: string;
     url: string;
     checkInterval: number;
+    consecutiveDownCount: number;
     project: {
         projectName: string;
         id: string;
@@ -47,6 +48,7 @@ export class MonitoringService {
                     name: true,
                     url: true,
                     checkInterval: true,
+                    consecutiveDownCount: true,
                     project: {
                         select: {
                             projectName: true,
@@ -113,10 +115,14 @@ export class MonitoringService {
         });
     }
 
-    async updateEndPoints(endpoint: EndpointRef, httpResult: EndPointType) {
+    async updateEndPoints(
+        endpoint: EndpointRef,
+        httpResult: EndPointType,
+        consecutiveDownCount: number
+    ) {
         const now = new Date();
         const nextCheck = new Date(
-            now.getTime() + Math.max(endpoint.checkInterval, 1) * 60 * 60 * 1000
+            now.getTime() + Math.max(endpoint.checkInterval, 5) * 60 * 1000
         );
 
         try {
@@ -126,10 +132,11 @@ export class MonitoringService {
                     nextCheckAt: nextCheck,
                     lastCheckedAt: now,
                     lastStatus: httpResult.status,
+                    consecutiveDownCount,
                 },
             });
 
-            console.log(`✅ Updated ${endpoint.name}: nextCheckAt = ${nextCheck.toLocaleString()}`);
+            console.log(`✅ Updated ${endpoint.name}: nextCheckAt = ${nextCheck.toLocaleString()}, downCount = ${consecutiveDownCount}`);
         } catch (error) {
             console.error("❌ Error updating endpoint:", error);
         }

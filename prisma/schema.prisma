@@ -90,20 +90,21 @@ model Project {
 }
 
 model Endpoint {
-  id            String         @id @default(cuid())
-  name          String
-  url           String
-  checkInterval Int            @default(1)
-  isDeleted     Boolean        @default(false)
-  nextCheckAt   DateTime?
-  lastStatus    HTTPStatus?
-  lastCheckedAt DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  projectId     String
-  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  logs          Log[]
-  notifications Notification[]
+  id                   String         @id @default(cuid())
+  name                 String
+  url                  String
+  checkInterval        Int            @default(5)
+  isDeleted            Boolean        @default(false)
+  nextCheckAt          DateTime?
+  lastStatus           HTTPStatus?
+  lastCheckedAt        DateTime?
+  consecutiveDownCount Int            @default(0)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  projectId            String
+  project              Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs                 Log[]
+  notifications        Notification[]
 
   @@unique([projectId, url])
   @@index([projectId])
@@ -116,7 +117,6 @@ model Setting {
   slackWebhook        String?
   slackWebhookIv      String?
   slackWebhookAuthTag String?
-  whatsappNumber      String?
   isActive            Boolean @default(false)
   userId              String
   user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)

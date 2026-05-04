@@ -5,6 +5,10 @@ import prisma from "@/lib/prisma";
 import { checkDNS, checkEndpoint, checkSSL, getContentHash } from "@/lib/log-script";
 import { generateAlert } from "@/services/openAI";
 
+// Anti-spam: alert on the 1st DOWN, stay silent for the next 3 consecutive DOWN
+// checks, then alert again on the 4th — and reset the cycle. UP resets to 0.
+const SILENT_CHECKS_BETWEEN_ALERTS = 3;
+
 export async function runEndpointMonitoring() {
     try {
         const monitoringService = new MonitoringService(prisma);
@@ -21,16 +25,38 @@ export async function runEndpointMonitoring() {
                     getContentHash(endpoint.url),
                 ]);
 
+                const isDown = httpResult.status === "DOWN";
+
+                let newDownCount = endpoint.consecutiveDownCount;
+                let shouldAlert = false;
+
+                if (isDown) {
+                    newDownCount = endpoint.consecutiveDownCount + 1;
+                    if (newDownCount === 1) {
+                        shouldAlert = true;
+                    } else if (newDownCount > SILENT_CHECKS_BETWEEN_ALERTS + 1) {
+                        shouldAlert = true;
+                        newDownCount = 1;
+                    }
+                } else {
+                    newDownCount = 0;
+                }
+
                 await monitoringService.createLogs(dnsResult, sslResult, httpResult, contentResult, endpoint);
-                await monitoringService.updateEndPoints(endpoint, httpResult);
+                await monitoringService.updateEndPoints(endpoint, httpResult, newDownCount);
 
                 const setting = endpoint.project.user.setting;
 
                 const hasSlack = !!setting?.slackWebhook && !!setting.slackWebhookIv && !!setting.slackWebhookAuthTag;
                 const slackWebhook = hasSlack ? decrypt(setting.slackWebhook!, setting.slackWebhookIv!, setting.slackWebhookAuthTag!) : null;
 
-                if (httpResult.status === "DOWN") {
-                    console.log(`🔴 ${endpoint.url} is DOWN — generating AI alert`);
+                if (isDown) {
+                    console.log(`🔴 ${endpoint.url} is DOWN (count=${newDownCount}, alert=${shouldAlert})`);
+
+                    if (!shouldAlert) {
+                        console.log(`🔕 Suppressing alert for ${endpoint.name} — within silent window`);
+                        continue;
+                    }
 
                     // Only send alerts if notifications are enabled (isActive = true)
                     const isNotificationsEnabled = setting?.isActive ?? true;

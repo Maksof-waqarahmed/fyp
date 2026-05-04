@@ -17,7 +17,6 @@ export const userSetting = createTRPCRouter({
                 slackWebhook: true,
                 slackWebhookIv: true,
                 slackWebhookAuthTag: true,
-                whatsappNumber: true,
                 isActive: true,
             }
         })
@@ -32,7 +31,6 @@ export const userSetting = createTRPCRouter({
             data: {
                 email: setting?.email || "",
                 slackWebhook: decryptedSlackWebhook,
-                whatsappNumber: setting?.whatsappNumber || "",
                 isActive: setting?.isActive ?? true,
             }
         }
@@ -43,13 +41,12 @@ export const userSetting = createTRPCRouter({
             z.object({
                 email: z.string().email("Invalid email format").optional(),
                 slackWebhook: z.string().url("Invalid Slack webhook URL").optional(),
-                whatsappNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number format").optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
             const userId = ctx.session.user.id;
 
-            if (!input.email && !input.slackWebhook && !input.whatsappNumber) {
+            if (!input.email && !input.slackWebhook) {
                 throw new TRPCError({
                     code: "BAD_REQUEST",
                     message: "At least one field is required to update",
@@ -72,10 +69,6 @@ export const userSetting = createTRPCRouter({
                 payload.slackWebhook = encryptedSlack.encryptedData;
                 payload.slackWebhookIv = encryptedSlack.iv;
                 payload.slackWebhookAuthTag = encryptedSlack.authTag;
-            }
-
-            if (input.whatsappNumber !== undefined) {
-                payload.whatsappNumber = input.whatsappNumber;
             }
 
             const updatedSetting = await ctx.prisma.setting.upsert({
@@ -120,7 +113,7 @@ export const userSetting = createTRPCRouter({
     testNotification: protectedProcedure
         .input(
             z.object({
-                channel: z.enum(["email", "slack", "whatsapp"]),
+                channel: z.enum(["email", "slack"]),
             })
         )
         .mutation(async ({ ctx, input }) => {
@@ -133,7 +126,6 @@ export const userSetting = createTRPCRouter({
                     slackWebhook: true,
                     slackWebhookIv: true,
                     slackWebhookAuthTag: true,
-                    whatsappNumber: true,
                 }
             });
 

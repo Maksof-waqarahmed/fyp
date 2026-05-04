@@ -13,7 +13,7 @@ export const endPointSchema = z.object({
                     invalid_type_error: "Interval must be a number",
                 })
                 .int()
-                .min(1, "Minimum interval is 1 hour")
+                .min(5, "Minimum interval is 5 minutes")
         })
     ).min(1, "At least one endpoint is required")
 })

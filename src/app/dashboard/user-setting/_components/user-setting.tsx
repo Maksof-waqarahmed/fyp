@@ -16,7 +16,6 @@ type UserProps = {
     data: {
         email: string;
         slackWebhook: string;
-        whatsappNumber: string;
         isActive: boolean;
     }
 }
@@ -25,7 +24,6 @@ const UserSetting = ({ data }: UserProps) => {
     const router = useRouter()
     const [email, setEmail] = useState(data.email)
     const [slackWebhook, setSlackWebhook] = useState(data.slackWebhook)
-    // const [whatsappNumber, setWhatsappNumber] = useState(data.whatsappNumber)
     const [isActive, setIsActive] = useState(data.isActive)
     const [testingChannel, setTestingChannel] = useState<string | null>(null)
 
@@ -72,9 +70,6 @@ const UserSetting = ({ data }: UserProps) => {
         if (slackWebhook && slackWebhook !== data.slackWebhook) {
             payload.slackWebhook = slackWebhook
         }
-        // if (whatsappNumber && whatsappNumber !== data.whatsappNumber) {
-        //     payload.whatsappNumber = whatsappNumber
-        // }
 
         if (Object.keys(payload).length === 0) {
             toast.info("No changes to save")
@@ -88,7 +83,7 @@ const UserSetting = ({ data }: UserProps) => {
         toggleNotificationsMutation.mutate({ isActive: checked })
     }
 
-    const handleTestNotification = (channel: "email" | "slack" | "whatsapp") => {
+    const handleTestNotification = (channel: "email" | "slack") => {
         setTestingChannel(channel)
         testNotificationMutation.mutate({ channel })
     }
@@ -235,56 +230,6 @@ const UserSetting = ({ data }: UserProps) => {
                     </CardContent>
                 </Card>
 
-                {/* WhatsApp Settings */}
-                {/* <Card className={`border-none shadow-sm rounded-2xl transition-opacity ${!isActive ? 'opacity-50' : ''}`}>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                            <div className="h-9 w-9 rounded-lg bg-green-50 flex items-center justify-center">
-                                <MessageSquare className="h-4 w-4 text-green-600" />
-                            </div>
-                            WhatsApp Notifications
-                        </CardTitle>
-                        <CardDescription>
-                            Receive alerts directly on WhatsApp
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="whatsapp">WhatsApp Number</Label>
-                            <Input
-                                id="whatsapp"
-                                type="tel"
-                                placeholder="+1234567890"
-                                value={whatsappNumber}
-                                onChange={(e) => setWhatsappNumber(e.target.value)}
-                                disabled={!isActive}
-                                className="rounded-xl"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Include country code (e.g., +1 for USA, +92 for Pakistan)
-                            </p>
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTestNotification("whatsapp")}
-                            disabled={!whatsappNumber || !isActive || testingChannel === "whatsapp"}
-                            className="rounded-xl"
-                        >
-                            {testingChannel === "whatsapp" ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Testing...
-                                </>
-                            ) : (
-                                <>
-                                    <TestTube2 className="h-4 w-4 mr-2" />
-                                    Test WhatsApp
-                                </>
-                            )}
-                        </Button>
-                    </CardContent>
-                </Card> */}
             </div>
 
             {/* Save Button */}
@@ -355,23 +300,6 @@ const UserSetting = ({ data }: UserProps) => {
                             )}
                         </div>
 
-                        {/* <div className="flex items-center justify-between p-3 rounded-xl bg-background">
-                            <div className="flex items-center gap-3">
-                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">WhatsApp</span>
-                            </div>
-                            {whatsappNumber ? (
-                                <div className="flex items-center gap-2 text-xs">
-                                    <Check className="h-4 w-4 text-green-500" />
-                                    <span className="text-muted-foreground">{whatsappNumber}</span>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 text-xs">
-                                    <X className="h-4 w-4 text-red-500" />
-                                    <span className="text-muted-foreground">Not configured</span>
-                                </div>
-                            )}
-                        </div> */}
                     </div>
                 </CardContent>
             </Card>

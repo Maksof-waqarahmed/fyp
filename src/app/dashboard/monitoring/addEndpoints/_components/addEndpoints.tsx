@@ -35,7 +35,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
   const [editFormData, setEditFormData] = useState({
     name: '',
     url: '',
-    checkInterval: 1
+    checkInterval: 5
   });
 
   const [page, setPage] = useState(1);
@@ -89,7 +89,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
       projectID: project.id,
       projectName: project.projectName,
       endPoints: [
-        { name: "", url: "", checkInterval: 1 }
+        { name: "", url: "", checkInterval: 5 }
       ],
     },
   });
@@ -105,7 +105,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
     form.reset({
       projectID: project.id,
       projectName: project.projectName,
-      endPoints: [{ name: "", url: "", checkInterval: 1 }],
+      endPoints: [{ name: "", url: "", checkInterval: 5 }],
     });
   }
   return (
@@ -199,7 +199,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                   <TableRow key={ep.id} className="hover:bg-muted/50 transition-colors">
                     <TableCell>{ep.name}</TableCell>
                     <TableCell className="truncate max-w-[200px]">{ep.url}</TableCell>
-                    <TableCell>{ep.checkInterval} hour</TableCell>
+                    <TableCell>{ep.checkInterval} min</TableCell>
                     <TableCell>{ep.lastStatus || "-"}</TableCell>
                     <TableCell>
                       {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "-"}
@@ -320,7 +320,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                 form.reset({
                   projectID: project.id,
                   projectName: project.projectName,
-                  endPoints: [{ name: "", url: "", checkInterval: 1 }],
+                  endPoints: [{ name: "", url: "", checkInterval: 5 }],
                 });
               }
             }} >
@@ -385,9 +385,9 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                                   name={`endPoints.${index}.checkInterval`}
                                   render={({ field }) => (
                                     <FormItem>
-                                      <FormLabel>Check Interval (hour)</FormLabel>
+                                      <FormLabel>Check Interval (minutes)</FormLabel>
                                       <FormControl>
-                                        <Input type="number" min={1} step={1} {...field} placeholder="Interval" onChange={(e) => field.onChange(Number(e.target.value))} />
+                                        <Input type="number" min={5} step={1} {...field} placeholder="Interval" onChange={(e) => field.onChange(Number(e.target.value))} />
                                       </FormControl>
                                       <div className="h-4 text-sm">
                                         <FormMessage />
@@ -411,7 +411,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                           </div>
                         </ScrollArea>
                         <div className="flex w-full gap-3 mt-6 justify-end">
-                          <Button type="button" onClick={() => append({ name: "", url: "", checkInterval: 1 })}>
+                          <Button type="button" onClick={() => append({ name: "", url: "", checkInterval: 5 })}>
                             Add Endpoint
                           </Button>
                           <Button type="submit">Update Project</Button>
@@ -430,7 +430,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
             setIsEditDialogOpen(open);
             if (!open) {
               setSelectedEndpoint(null);
-              setEditFormData({ name: '', url: '', checkInterval: 1 });
+              setEditFormData({ name: '', url: '', checkInterval: 5 });
             }
           }}>
             <DialogContent className="sm:max-w-md">
@@ -461,13 +461,13 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Check Interval (hours)</label>
+                  <label className="text-sm font-medium mb-1 block">Check Interval (minutes)</label>
                   <Input
                     type="number"
-                    min={1}
+                    min={5}
                     value={editFormData.checkInterval}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, checkInterval: Number(e.target.value) }))}
-                    placeholder="1"
+                    placeholder="5"
                   />
                 </div>
               </div>

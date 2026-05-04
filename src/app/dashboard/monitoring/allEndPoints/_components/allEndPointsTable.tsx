@@ -126,7 +126,7 @@ export const EndPointsTable = ({ endpoints }: { endpoints: Endpoint[] }) => {
                                     </TableCell>
 
                                     <TableCell className="text-sm text-muted-foreground">
-                                        {endpoint.checkInterval}
+                                        {endpoint.checkInterval} min
                                     </TableCell>
 
                                     <TableCell className="text-sm text-muted-foreground">

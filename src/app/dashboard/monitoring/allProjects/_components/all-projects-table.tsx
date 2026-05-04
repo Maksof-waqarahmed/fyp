@@ -86,7 +86,7 @@ function ExpandedEndpoints({ projectId }: { projectId: string }) {
                     <TableRow className="border-none">
                         <TableHead className="text-zinc-700 font-semibold">Name</TableHead>
                         <TableHead className="text-zinc-700 font-semibold">URL</TableHead>
-                        <TableHead className="text-zinc-700 font-semibold">Interval (h)</TableHead>
+                        <TableHead className="text-zinc-700 font-semibold">Interval (min)</TableHead>
                         <TableHead className="text-zinc-700 font-semibold">Last Status</TableHead>
                         <TableHead className="text-zinc-700 font-semibold">Last Checked</TableHead>
                     </TableRow>
@@ -96,7 +96,7 @@ function ExpandedEndpoints({ projectId }: { projectId: string }) {
                         <TableRow key={ep.id} className="hover:bg-zinc-100/60">
                             <TableCell className="font-medium">{ep.name}</TableCell>
                             <TableCell className="text-muted-foreground max-w-[260px] truncate">{ep.url}</TableCell>
-                            <TableCell className="text-muted-foreground">{ep.checkInterval}h</TableCell>
+                            <TableCell className="text-muted-foreground">{ep.checkInterval}m</TableCell>
                             <TableCell>{statusBadge(ep.lastStatus)}</TableCell>
                             <TableCell className="text-muted-foreground">
                                 {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "Never"}
