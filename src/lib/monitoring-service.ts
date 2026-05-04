@@ -8,7 +8,7 @@ import {
     EndpointDown,
     EndpointUp
 } from "./log-script";
-import { AlertStatus, DNSStatus, HTTPStatus } from "../../prisma/generated/prisma/enums";
+import { AlertStatus, DNSStatus, HTTPStatus, IncidentStatus } from "../../prisma/generated/prisma/enums";
 import { PrismaClient } from "../../prisma/generated/prisma/client";
 
 export type EndpointRef = {
@@ -97,7 +97,7 @@ export class MonitoringService {
                 ? new Date(sslResult.sslExpiry)
                 : null;
 
-        await this.prisma.log.create({
+        const log = await this.prisma.log.create({
             data: {
                 status: httpResult.status as HTTPStatus,
                 httpCode: !isDown ? (httpResult as EndpointUp).statusCode : null,
@@ -113,6 +113,59 @@ export class MonitoringService {
                 endpointId: endpoint.id,
             },
         });
+
+        return log;
+    }
+
+    async upsertIncident(
+        endpoint: EndpointRef,
+        httpResult: EndPointType,
+        log: { id: string; checkedAt: Date }
+    ) {
+        const isDown = httpResult.status === "DOWN";
+
+        const ongoing = await this.prisma.incident.findFirst({
+            where: { endpointId: endpoint.id, status: IncidentStatus.ONGOING },
+            orderBy: { startedAt: "desc" },
+        });
+
+        if (isDown) {
+            if (!ongoing) {
+                await this.prisma.incident.create({
+                    data: {
+                        endpointId: endpoint.id,
+                        status: IncidentStatus.ONGOING,
+                        startedAt: log.checkedAt,
+                        downtimeMs: 0,
+                        triggerStatus: httpResult.status as HTTPStatus,
+                        triggerLogId: log.id,
+                        errorMessage: (httpResult as EndpointDown).reason ?? null,
+                        httpCode: null,
+                    },
+                });
+                console.log(`🆘 New incident opened for ${endpoint.name}`);
+            } else {
+                const downtimeMs = log.checkedAt.getTime() - ongoing.startedAt.getTime();
+                await this.prisma.incident.update({
+                    where: { id: ongoing.id },
+                    data: { downtimeMs },
+                });
+            }
+            return;
+        }
+
+        if (ongoing) {
+            const downtimeMs = log.checkedAt.getTime() - ongoing.startedAt.getTime();
+            await this.prisma.incident.update({
+                where: { id: ongoing.id },
+                data: {
+                    status: IncidentStatus.RESOLVED,
+                    recoveredAt: log.checkedAt,
+                    downtimeMs,
+                },
+            });
+            console.log(`✅ Incident resolved for ${endpoint.name} after ${Math.round(downtimeMs / 1000)}s`);
+        }
     }
 
     async updateEndPoints(

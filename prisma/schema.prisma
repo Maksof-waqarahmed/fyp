@@ -105,6 +105,7 @@ model Endpoint {
   project              Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   logs                 Log[]
   notifications        Notification[]
+  incidents            Incident[]
 
   @@unique([projectId, url])
   @@index([projectId])
@@ -157,6 +158,31 @@ model Notification {
 
   @@index([endpointId])
   @@map("notification")
+}
+
+model Incident {
+  id            String         @id @default(cuid())
+  endpointId    String
+  endpoint      Endpoint       @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  status        IncidentStatus @default(ONGOING)
+  startedAt     DateTime       @default(now())
+  recoveredAt   DateTime?
+  downtimeMs    Int            @default(0)
+  triggerStatus HTTPStatus
+  triggerLogId  String?
+  errorMessage  String?
+  httpCode      Int?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([endpointId, status])
+  @@index([status, startedAt])
+  @@map("incident")
+}
+
+enum IncidentStatus {
+  ONGOING
+  RESOLVED
 }
 
 model StatusPage {

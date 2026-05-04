@@ -42,8 +42,9 @@ export async function runEndpointMonitoring() {
                     newDownCount = 0;
                 }
 
-                await monitoringService.createLogs(dnsResult, sslResult, httpResult, contentResult, endpoint);
+                const log = await monitoringService.createLogs(dnsResult, sslResult, httpResult, contentResult, endpoint);
                 await monitoringService.updateEndPoints(endpoint, httpResult, newDownCount);
+                await monitoringService.upsertIncident(endpoint, httpResult, log);
 
                 const setting = endpoint.project.user.setting;
 

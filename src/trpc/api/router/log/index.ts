@@ -207,170 +207,6 @@ export const logs = createTRPCRouter({
         };
     }),
 
-    getIncidents: protectedProcedure.input(
-        z.object({
-            page: z.number().int().min(1).default(1),
-            limit: z.number().int().min(1).max(50).default(10),
-            projectId: z.string().optional(),
-            endpointId: z.string().optional(),
-            status: z.enum(["ongoing", "resolved"]).optional(),
-            fromDate: z.string().optional(),
-            toDate: z.string().optional(),
-            days: z.number().int().min(1).max(365).default(30),
-        })
-    ).query(async ({ ctx, input }) => {
-        const { page, limit } = input;
-        const userId = ctx.session.user.id;
-
-        const endpointWhere: any = {
-            isDeleted: false,
-            project: { userId, isDeleted: false },
-        };
-        if (input.projectId) endpointWhere.projectId = input.projectId;
-        if (input.endpointId) endpointWhere.id = input.endpointId;
-
-        const endpoints = await ctx.prisma.endpoint.findMany({
-            where: endpointWhere,
-            select: {
-                id: true,
-                name: true,
-                url: true,
-                project: { select: { id: true, projectName: true } },
-            },
-        });
-
-        if (endpoints.length === 0) {
-            return { data: [], total: 0, page, totalPages: 0 };
-        }
-
-        const endpointIds = endpoints.map((e) => e.id);
-        const endpointMap = new Map(endpoints.map((e) => [e.id, e]));
-
-        const since = new Date();
-        since.setDate(since.getDate() - input.days);
-        since.setHours(0, 0, 0, 0);
-
-        const logs = await ctx.prisma.log.findMany({
-            where: {
-                endpointId: { in: endpointIds },
-                checkedAt: { gte: since },
-            },
-            select: {
-                id: true,
-                status: true,
-                checkedAt: true,
-                errorMessage: true,
-                httpCode: true,
-                endpointId: true,
-            },
-            orderBy: [{ endpointId: "asc" }, { checkedAt: "asc" }],
-        });
-
-        const logsByEndpoint = new Map<string, typeof logs>();
-        for (const log of logs) {
-            if (!logsByEndpoint.has(log.endpointId)) logsByEndpoint.set(log.endpointId, []);
-            logsByEndpoint.get(log.endpointId)!.push(log);
-        }
-
-        const DOWN_STATUSES = ["DOWN", "CLIENT_ERROR", "UNKNOWN"];
-        const UP_STATUSES = ["UP", "REDIRECT"];
-
-        type Incident = {
-            id: string;
-            endpoint: (typeof endpoints)[0];
-            startedAt: Date;
-            recoveredAt: Date | null;
-            durationMs: number;
-            status: "ongoing" | "resolved";
-            triggerStatus: string;
-            httpCode: number | null;
-            errorMessage: string | null;
-        };
-
-        const incidents: Incident[] = [];
-
-        for (const [endpointId, endpointLogs] of logsByEndpoint) {
-            const endpoint = endpointMap.get(endpointId)!;
-            let inDowntime = false;
-            let incidentStartLog: (typeof logs)[0] | null = null;
-
-            for (const log of endpointLogs) {
-                const isDown = DOWN_STATUSES.includes(log.status);
-                const isUp = UP_STATUSES.includes(log.status);
-
-                if (!inDowntime && isDown) {
-                    inDowntime = true;
-                    incidentStartLog = log;
-                } else if (inDowntime && isUp) {
-                    const durationMs = log.checkedAt.getTime() - incidentStartLog!.checkedAt.getTime();
-                    incidents.push({
-                        id: incidentStartLog!.id,
-                        endpoint,
-                        startedAt: incidentStartLog!.checkedAt,
-                        recoveredAt: log.checkedAt,
-                        durationMs,
-                        status: "resolved",
-                        triggerStatus: incidentStartLog!.status,
-                        httpCode: incidentStartLog!.httpCode,
-                        errorMessage: incidentStartLog!.errorMessage,
-                    });
-                    inDowntime = false;
-                    incidentStartLog = null;
-                }
-            }
-
-            if (inDowntime && incidentStartLog) {
-                incidents.push({
-                    id: incidentStartLog.id,
-                    endpoint,
-                    startedAt: incidentStartLog.checkedAt,
-                    recoveredAt: null,
-                    durationMs: Date.now() - incidentStartLog.checkedAt.getTime(),
-                    status: "ongoing",
-                    triggerStatus: incidentStartLog.status,
-                    httpCode: incidentStartLog.httpCode,
-                    errorMessage: incidentStartLog.errorMessage,
-                });
-            }
-        }
-
-        incidents.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
-
-        let filtered = incidents;
-        if (input.status) filtered = filtered.filter((i) => i.status === input.status);
-        if (input.fromDate) {
-            const from = new Date(input.fromDate);
-            filtered = filtered.filter((i) => i.startedAt >= from);
-        }
-        if (input.toDate) {
-            const to = new Date(new Date(input.toDate).setHours(23, 59, 59, 999));
-            filtered = filtered.filter((i) => i.startedAt <= to);
-        }
-
-        const total = filtered.length;
-        const totalPages = Math.ceil(total / limit);
-        const skip = (page - 1) * limit;
-        const data = filtered.slice(skip, skip + limit).map((i) => ({
-            ...i,
-            startedAt: i.startedAt.toISOString(),
-            recoveredAt: i.recoveredAt?.toISOString() ?? null,
-        }));
-
-        const ongoingCount = incidents.filter((i) => i.status === "ongoing").length;
-        const resolvedCount = incidents.filter((i) => i.status === "resolved").length;
-        const avgDowntimeMs = resolvedCount > 0
-            ? Math.round(incidents.filter((i) => i.status === "resolved").reduce((acc, i) => acc + i.durationMs, 0) / resolvedCount)
-            : 0;
-
-        return {
-            data,
-            total,
-            page,
-            totalPages,
-            summary: { total: incidents.length, ongoing: ongoingCount, resolved: resolvedCount, avgDowntimeMs },
-        };
-    }),
-
     // DELETE - Bulk delete old logs (cleanup utility)
     cleanupOldLogs: protectedProcedure.input(
         z.object({
@@ -404,7 +240,9 @@ export const logs = createTRPCRouter({
     getEndpointsWithIncidents: protectedProcedure.query(async ({ ctx }) => {
         const userId = ctx.session.user.id;
 
-        // Get all endpoints for user
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
         const endpoints = await ctx.prisma.endpoint.findMany({
             where: {
                 isDeleted: false,
@@ -416,63 +254,34 @@ export const logs = createTRPCRouter({
                 url: true,
                 lastStatus: true,
                 project: { select: { projectName: true } },
+                incidents: {
+                    where: { startedAt: { gte: thirtyDaysAgo } },
+                    select: {
+                        id: true,
+                        status: true,
+                        startedAt: true,
+                    },
+                    orderBy: { startedAt: "desc" },
+                },
             },
         });
 
-        // Get incident counts for last 30 days
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const endpointsWithIncidents = endpoints.map((endpoint) => {
+            const incidentCount = endpoint.incidents.length;
+            const ongoingCount = endpoint.incidents.filter((i) => i.status === "ONGOING").length;
+            const lastIncidentAt = endpoint.incidents[0]?.startedAt ?? null;
 
-        const DOWN_STATUSES = ["DOWN", "CLIENT_ERROR", "UNKNOWN"];
+            const { incidents: _omit, ...rest } = endpoint;
+            void _omit;
 
-        const endpointsWithIncidents = await Promise.all(
-            endpoints.map(async (endpoint) => {
-                // Get all logs for this endpoint in last 30 days
-                const logs = await ctx.prisma.log.findMany({
-                    where: {
-                        endpointId: endpoint.id,
-                        checkedAt: { gte: thirtyDaysAgo },
-                    },
-                    select: {
-                        status: true,
-                        checkedAt: true,
-                    },
-                    orderBy: { checkedAt: "asc" },
-                });
+            return {
+                ...rest,
+                incidentCount,
+                ongoingCount,
+                lastIncidentAt: lastIncidentAt?.toISOString() ?? null,
+            };
+        });
 
-                // Count incidents (consecutive DOWN logs count as 1 incident)
-                let incidentCount = 0;
-                let ongoingCount = 0;
-                let lastIncidentAt: Date | null = null;
-                let inDowntime = false;
-
-                for (const log of logs) {
-                    const isDown = DOWN_STATUSES.includes(log.status);
-
-                    if (!inDowntime && isDown) {
-                        inDowntime = true;
-                        incidentCount++;
-                        lastIncidentAt = log.checkedAt;
-                    } else if (inDowntime && !isDown) {
-                        inDowntime = false;
-                    }
-                }
-
-                // If still in downtime, it's ongoing
-                if (inDowntime) {
-                    ongoingCount = 1;
-                }
-
-                return {
-                    ...endpoint,
-                    incidentCount,
-                    ongoingCount,
-                    lastIncidentAt: lastIncidentAt?.toISOString() ?? null,
-                };
-            })
-        );
-
-        // Calculate summary
         const totalIncidents = endpointsWithIncidents.reduce((sum, ep) => sum + ep.incidentCount, 0);
         const ongoingIncidents = endpointsWithIncidents.reduce((sum, ep) => sum + ep.ongoingCount, 0);
 
@@ -493,7 +302,6 @@ export const logs = createTRPCRouter({
         .query(async ({ ctx, input }) => {
             const userId = ctx.session.user.id;
 
-            // Get endpoint info
             const endpoint = await ctx.prisma.endpoint.findFirst({
                 where: {
                     id: input.endpointId,
@@ -516,7 +324,35 @@ export const logs = createTRPCRouter({
                 });
             }
 
-            // Get recent logs (last 30 days)
+            // Latest incident from the Incident table — prefer ongoing, fallback to most recent resolved
+            const ongoing = await ctx.prisma.incident.findFirst({
+                where: { endpointId: input.endpointId, status: "ONGOING" },
+                orderBy: { startedAt: "desc" },
+            });
+
+            const latestIncident = ongoing
+                ? ongoing
+                : await ctx.prisma.incident.findFirst({
+                      where: { endpointId: input.endpointId },
+                      orderBy: { startedAt: "desc" },
+                  });
+
+            const currentIncident = latestIncident
+                ? {
+                      id: latestIncident.id,
+                      status: latestIncident.status === "ONGOING" ? "ongoing" : "resolved",
+                      startedAt: latestIncident.startedAt.toISOString(),
+                      recoveredAt: latestIncident.recoveredAt?.toISOString() ?? null,
+                      downtimeMs:
+                          latestIncident.status === "ONGOING"
+                              ? Date.now() - latestIncident.startedAt.getTime()
+                              : latestIncident.downtimeMs,
+                      errorMessage: latestIncident.errorMessage,
+                      httpCode: latestIncident.httpCode,
+                      triggerStatus: latestIncident.triggerStatus,
+                  }
+                : null;
+
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -540,51 +376,6 @@ export const logs = createTRPCRouter({
                 take: 50,
             });
 
-            // Find current incident (if ongoing)
-            const DOWN_STATUSES = ["DOWN", "CLIENT_ERROR", "UNKNOWN"];
-            let currentIncident = null;
-
-            if (logs.length > 0 && DOWN_STATUSES.includes(logs[0].status)) {
-                // Find when this incident started
-                let startLog = logs[0];
-                for (let i = 0; i < logs.length; i++) {
-                    if (DOWN_STATUSES.includes(logs[i].status)) {
-                        startLog = logs[i];
-                    } else {
-                        break;
-                    }
-                }
-
-                currentIncident = {
-                    status: "ongoing",
-                    startedAt: startLog.checkedAt.toISOString(),
-                    recoveredAt: null,
-                    errorMessage: logs[0].errorMessage,
-                    httpCode: logs[0].httpCode,
-                    triggerStatus: logs[0].status,
-                };
-            } else if (logs.length > 0) {
-                // Find most recent resolved incident
-                const incidentLogs: typeof logs = [];
-                for (let i = 0; i < logs.length; i++) {
-                    if (DOWN_STATUSES.includes(logs[i].status)) {
-                        incidentLogs.push(logs[i]);
-                    } else if (incidentLogs.length > 0) {
-                        // Found recovery
-                        currentIncident = {
-                            status: "resolved",
-                            startedAt: incidentLogs[incidentLogs.length - 1].checkedAt.toISOString(),
-                            recoveredAt: logs[i].checkedAt.toISOString(),
-                            errorMessage: incidentLogs[0].errorMessage,
-                            httpCode: incidentLogs[0].httpCode,
-                            triggerStatus: incidentLogs[0].status,
-                        };
-                        break;
-                    }
-                }
-            }
-
-            // Format activity log
             const activityLog = logs.map((log) => ({
                 id: log.id,
                 status: log.status,
@@ -618,180 +409,105 @@ export const logs = createTRPCRouter({
             const { page, limit } = input;
             const userId = ctx.session.user.id;
 
-            // Get all user's endpoints
-            const endpoints = await ctx.prisma.endpoint.findMany({
-                where: {
+            const baseWhere: any = {
+                endpoint: {
                     isDeleted: false,
                     project: { userId, isDeleted: false },
                 },
-                select: {
-                    id: true,
-                    name: true,
-                    url: true,
-                    project: { select: { projectName: true } },
-                },
-            });
-
-            if (endpoints.length === 0) {
-                return {
-                    incidents: [],
-                    total: 0,
-                    page,
-                    totalPages: 0,
-                    summary: { total: 0, ongoing: 0, resolved: 0, avgDowntimeMs: 0 },
-                };
-            }
-
-            // Get logs from last 30 days
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-            const endpointIds = endpoints.map((e) => e.id);
-            const endpointMap = new Map(endpoints.map((e) => [e.id, e]));
-
-            const logs = await ctx.prisma.log.findMany({
-                where: {
-                    endpointId: { in: endpointIds },
-                    checkedAt: { gte: thirtyDaysAgo },
-                },
-                select: {
-                    id: true,
-                    status: true,
-                    checkedAt: true,
-                    errorMessage: true,
-                    httpCode: true,
-                    endpointId: true,
-                },
-                orderBy: [{ endpointId: "asc" }, { checkedAt: "asc" }],
-            });
-
-            const DOWN_STATUSES = ["DOWN", "CLIENT_ERROR", "UNKNOWN"];
-            const UP_STATUSES = ["UP", "REDIRECT"];
-
-            type IncidentType = {
-                id: string;
-                endpointId: string;
-                endpointName: string;
-                endpointUrl: string;
-                projectName: string;
-                status: "ongoing" | "resolved";
-                rootCause: string | null;
-                startedAt: string;
-                resolvedAt: string | null;
-                durationMs: number;
-                httpCode: number | null;
             };
 
-            const incidents: IncidentType[] = [];
-            const logsByEndpoint = new Map<string, typeof logs>();
-
-            for (const log of logs) {
-                if (!logsByEndpoint.has(log.endpointId)) {
-                    logsByEndpoint.set(log.endpointId, []);
-                }
-                logsByEndpoint.get(log.endpointId)!.push(log);
-            }
-
-            // Build incidents from logs
-            for (const [endpointId, endpointLogs] of logsByEndpoint) {
-                const endpoint = endpointMap.get(endpointId)!;
-                let inDowntime = false;
-                let incidentStartLog: (typeof logs)[0] | null = null;
-
-                for (const log of endpointLogs) {
-                    const isDown = DOWN_STATUSES.includes(log.status);
-                    const isUp = UP_STATUSES.includes(log.status);
-
-                    if (!inDowntime && isDown) {
-                        inDowntime = true;
-                        incidentStartLog = log;
-                    } else if (inDowntime && isUp) {
-                        const durationMs = log.checkedAt.getTime() - incidentStartLog!.checkedAt.getTime();
-                        incidents.push({
-                            id: incidentStartLog!.id,
-                            endpointId: endpoint.id,
-                            endpointName: endpoint.name,
-                            endpointUrl: endpoint.url,
-                            projectName: endpoint.project.projectName,
-                            status: "resolved",
-                            rootCause: incidentStartLog!.errorMessage,
-                            startedAt: incidentStartLog!.checkedAt.toISOString(),
-                            resolvedAt: log.checkedAt.toISOString(),
-                            durationMs,
-                            httpCode: incidentStartLog!.httpCode,
-                        });
-                        inDowntime = false;
-                        incidentStartLog = null;
-                    }
-                }
-
-                // Ongoing incident
-                if (inDowntime && incidentStartLog) {
-                    incidents.push({
-                        id: incidentStartLog.id,
-                        endpointId: endpoint.id,
-                        endpointName: endpoint.name,
-                        endpointUrl: endpoint.url,
-                        projectName: endpoint.project.projectName,
-                        status: "ongoing",
-                        rootCause: incidentStartLog.errorMessage,
-                        startedAt: incidentStartLog.checkedAt.toISOString(),
-                        resolvedAt: null,
-                        durationMs: Date.now() - incidentStartLog.checkedAt.getTime(),
-                        httpCode: incidentStartLog.httpCode,
-                    });
-                }
-            }
-
-            // Sort by most recent
-            incidents.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
-
-            // Apply filters
-            let filtered = incidents;
-
             if (input.status) {
-                filtered = filtered.filter((i) => i.status === input.status);
+                baseWhere.status = input.status === "ongoing" ? "ONGOING" : "RESOLVED";
             }
 
             if (input.search) {
-                const searchLower = input.search.toLowerCase();
-                filtered = filtered.filter(
-                    (i) =>
-                        i.endpointName.toLowerCase().includes(searchLower) ||
-                        i.endpointUrl.toLowerCase().includes(searchLower) ||
-                        i.projectName.toLowerCase().includes(searchLower) ||
-                        i.rootCause?.toLowerCase().includes(searchLower)
-                );
+                const s = input.search;
+                baseWhere.OR = [
+                    { endpoint: { ...baseWhere.endpoint, name: { contains: s, mode: "insensitive" } } },
+                    { endpoint: { ...baseWhere.endpoint, url: { contains: s, mode: "insensitive" } } },
+                    {
+                        endpoint: {
+                            ...baseWhere.endpoint,
+                            project: { ...baseWhere.endpoint.project, projectName: { contains: s, mode: "insensitive" } },
+                        },
+                    },
+                    { errorMessage: { contains: s, mode: "insensitive" } },
+                ];
+                delete baseWhere.endpoint;
             }
 
-            // Calculate summary
-            const ongoingCount = incidents.filter((i) => i.status === "ongoing").length;
-            const resolvedCount = incidents.filter((i) => i.status === "resolved").length;
-            const avgDowntimeMs =
-                resolvedCount > 0
-                    ? Math.round(
-                          incidents
-                              .filter((i) => i.status === "resolved")
-                              .reduce((acc, i) => acc + i.durationMs, 0) / resolvedCount
-                      )
-                    : 0;
+            const [rows, total] = await Promise.all([
+                ctx.prisma.incident.findMany({
+                    where: baseWhere,
+                    skip: (page - 1) * limit,
+                    take: limit,
+                    orderBy: { startedAt: "desc" },
+                    select: {
+                        id: true,
+                        status: true,
+                        startedAt: true,
+                        recoveredAt: true,
+                        downtimeMs: true,
+                        errorMessage: true,
+                        httpCode: true,
+                        endpoint: {
+                            select: {
+                                id: true,
+                                name: true,
+                                url: true,
+                                project: { select: { projectName: true } },
+                            },
+                        },
+                    },
+                }),
+                ctx.prisma.incident.count({ where: baseWhere }),
+            ]);
 
-            // Pagination
-            const total = filtered.length;
-            const totalPages = Math.ceil(total / limit);
-            const skip = (page - 1) * limit;
-            const paginatedIncidents = filtered.slice(skip, skip + limit);
+            const incidents = rows.map((i) => ({
+                id: i.id,
+                endpointId: i.endpoint.id,
+                endpointName: i.endpoint.name,
+                endpointUrl: i.endpoint.url,
+                projectName: i.endpoint.project.projectName,
+                status: i.status === "ONGOING" ? ("ongoing" as const) : ("resolved" as const),
+                rootCause: i.errorMessage,
+                startedAt: i.startedAt.toISOString(),
+                resolvedAt: i.recoveredAt?.toISOString() ?? null,
+                durationMs:
+                    i.status === "ONGOING"
+                        ? Date.now() - i.startedAt.getTime()
+                        : i.downtimeMs,
+                httpCode: i.httpCode,
+            }));
+
+            // Summary across the user's full incident history (no pagination/filter)
+            const summaryWhere = {
+                endpoint: {
+                    isDeleted: false,
+                    project: { userId, isDeleted: false },
+                },
+            };
+
+            const [summaryTotal, ongoingTotal, resolvedAgg] = await Promise.all([
+                ctx.prisma.incident.count({ where: summaryWhere }),
+                ctx.prisma.incident.count({ where: { ...summaryWhere, status: "ONGOING" } }),
+                ctx.prisma.incident.aggregate({
+                    where: { ...summaryWhere, status: "RESOLVED" },
+                    _avg: { downtimeMs: true },
+                    _count: true,
+                }),
+            ]);
 
             return {
-                incidents: paginatedIncidents,
+                incidents,
                 total,
                 page,
-                totalPages,
+                totalPages: Math.ceil(total / limit),
                 summary: {
-                    total: incidents.length,
-                    ongoing: ongoingCount,
-                    resolved: resolvedCount,
-                    avgDowntimeMs,
+                    total: summaryTotal,
+                    ongoing: ongoingTotal,
+                    resolved: resolvedAgg._count,
+                    avgDowntimeMs: Math.round(resolvedAgg._avg.downtimeMs ?? 0),
                 },
             };
         }),
