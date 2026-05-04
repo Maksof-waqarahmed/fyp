@@ -13,10 +13,13 @@ import {
     ExternalLink,
     Globe,
     Loader2,
-    Server
+    Server,
+    Sparkles,
+    Wand2
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { useState } from "react"
 
 interface IncidentLog {
     id: string
@@ -75,6 +78,58 @@ export default function IncidentDetailPage() {
 
     const { endpoint, currentIncident, activityLog } = data
     const isDown = currentIncident?.status === "ongoing"
+
+    return <IncidentDetailView
+        endpoint={endpoint}
+        currentIncident={currentIncident}
+        activityLog={activityLog}
+        endpointId={endpointId}
+        isDown={isDown}
+    />
+}
+
+interface IncidentDetailViewProps {
+    endpoint: { id: string; name: string; url: string }
+    currentIncident: {
+        status: string
+        startedAt: string
+        recoveredAt: string | null
+        errorMessage: string | null
+        httpCode: number | null
+        triggerStatus: string
+    } | null
+    activityLog: IncidentLog[]
+    endpointId: string
+    isDown: boolean
+}
+
+function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId, isDown }: IncidentDetailViewProps) {
+    const [analysisRequested, setAnalysisRequested] = useState(false)
+
+    const { data: aiData, isFetching: isAnalyzing, refetch: refetchAnalysis } =
+        api.logs.analyzeIncident.useQuery(
+            { endpointId },
+            { enabled: analysisRequested, staleTime: 60 * 60 * 1000 }
+        )
+
+    const categoryStyle = (cat: string) => {
+        switch (cat) {
+            case "NETWORK": return "bg-blue-100 text-blue-700 border-blue-200"
+            case "DNS": return "bg-amber-100 text-amber-700 border-amber-200"
+            case "SSL": return "bg-purple-100 text-purple-700 border-purple-200"
+            case "SERVER": return "bg-red-100 text-red-700 border-red-200"
+            case "APPLICATION": return "bg-orange-100 text-orange-700 border-orange-200"
+            default: return "bg-slate-100 text-slate-700 border-slate-200"
+        }
+    }
+
+    const confidenceStyle = (conf: string) => {
+        switch (conf) {
+            case "HIGH": return "bg-green-100 text-green-700 border-green-200"
+            case "MEDIUM": return "bg-yellow-100 text-yellow-700 border-yellow-200"
+            default: return "bg-slate-100 text-slate-700 border-slate-200"
+        }
+    }
 
     return (
         <div className="w-full space-y-6 pb-8">
@@ -215,6 +270,100 @@ export default function IncidentDetailPage() {
                             </div>
                         </Card>
                     </div>
+
+                    {/* AI Analysis Card */}
+                    <Card className="p-6 border-2 bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50">
+                        <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg shrink-0">
+                                    <Sparkles className="h-5 w-5 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold">AI Root Cause Analysis</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                        Powered by GPT-4o-mini · Cached for 1 hour
+                                    </p>
+                                </div>
+                            </div>
+                            {!analysisRequested && (
+                                <Button
+                                    onClick={() => setAnalysisRequested(true)}
+                                    className="bg-gradient-to-br from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0"
+                                >
+                                    <Wand2 className="h-4 w-4 mr-2" />
+                                    Analyze with AI
+                                </Button>
+                            )}
+                            {analysisRequested && !isAnalyzing && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => refetchAnalysis()}
+                                >
+                                    <Wand2 className="h-3 w-3 mr-1" />
+                                    Re-analyze
+                                </Button>
+                            )}
+                        </div>
+
+                        {!analysisRequested && (
+                            <div className="text-center py-8 text-muted-foreground">
+                                <Sparkles className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                                <p className="text-sm">Click <span className="font-semibold">Analyze with AI</span> to get a structured root-cause diagnosis based on the recent logs and similar past incidents.</p>
+                            </div>
+                        )}
+
+                        {analysisRequested && isAnalyzing && (
+                            <div className="text-center py-8">
+                                <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500 mb-2" />
+                                <p className="text-sm text-muted-foreground">Analyzing incident…</p>
+                            </div>
+                        )}
+
+                        {analysisRequested && !isAnalyzing && aiData && !aiData.analysis && (
+                            <div className="text-center py-6 text-sm text-muted-foreground bg-slate-50 rounded-lg">
+                                Analysis unavailable — AI rate limit reached or service temporarily down. Try again in a few minutes.
+                            </div>
+                        )}
+
+                        {analysisRequested && !isAnalyzing && aiData?.analysis && (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant="outline" className={categoryStyle(aiData.analysis.category)}>
+                                        {aiData.analysis.category}
+                                    </Badge>
+                                    <Badge variant="outline" className={confidenceStyle(aiData.analysis.confidence)}>
+                                        {aiData.analysis.confidence} confidence
+                                    </Badge>
+                                </div>
+
+                                <div>
+                                    <p className="text-base font-semibold text-gray-900">
+                                        {aiData.analysis.summary}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        {aiData.analysis.likelyCause}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                                        Recommended Actions
+                                    </h4>
+                                    <ol className="space-y-2 text-sm">
+                                        {aiData.analysis.recommendedActions.map((action, i) => (
+                                            <li key={i} className="flex gap-3">
+                                                <span className="shrink-0 h-5 w-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
+                                                    {i + 1}
+                                                </span>
+                                                <span className="text-gray-800">{action}</span>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                </div>
+                            </div>
+                        )}
+                    </Card>
 
                     {/* Bottom Row - Activity Log & Response Side by Side */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

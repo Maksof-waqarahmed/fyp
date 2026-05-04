@@ -1,6 +1,7 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { analyzeIncident } from "@/services/openAI";
 
 export const logs = createTRPCRouter({
 
@@ -392,6 +393,109 @@ export const logs = createTRPCRouter({
                 endpoint,
                 currentIncident,
                 activityLog,
+            };
+        }),
+
+    // GET - AI root cause analysis for the latest incident on a given endpoint
+    analyzeIncident: protectedProcedure
+        .input(z.object({ endpointId: z.string() }))
+        .query(async ({ ctx, input }) => {
+            const userId = ctx.session.user.id;
+
+            const endpoint = await ctx.prisma.endpoint.findFirst({
+                where: {
+                    id: input.endpointId,
+                    isDeleted: false,
+                    project: { userId, isDeleted: false },
+                },
+                select: { id: true, name: true, url: true },
+            });
+
+            if (!endpoint) {
+                throw new TRPCError({ code: "NOT_FOUND", message: "Endpoint not found" });
+            }
+
+            const incident = await ctx.prisma.incident.findFirst({
+                where: { endpointId: endpoint.id },
+                orderBy: [{ status: "asc" }, { startedAt: "desc" }], // ONGOING < RESOLVED alphabetically — prefers ongoing
+            });
+
+            if (!incident) {
+                return { analysis: null, hasIncident: false as const };
+            }
+
+            const recentLogs = await ctx.prisma.log.findMany({
+                where: { endpointId: endpoint.id },
+                orderBy: { checkedAt: "desc" },
+                take: 10,
+                select: {
+                    status: true,
+                    httpCode: true,
+                    errorMessage: true,
+                    dnsStatus: true,
+                    sslValid: true,
+                    responseTime: true,
+                    checkedAt: true,
+                },
+            });
+
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const similarPastIncidents = await ctx.prisma.incident.findMany({
+                where: {
+                    endpointId: endpoint.id,
+                    id: { not: incident.id },
+                    status: "RESOLVED",
+                    startedAt: { gte: thirtyDaysAgo },
+                },
+                orderBy: { startedAt: "desc" },
+                take: 5,
+                select: {
+                    startedAt: true,
+                    downtimeMs: true,
+                    errorMessage: true,
+                },
+            });
+
+            const analysis = await analyzeIncident(
+                {
+                    incident: {
+                        id: incident.id,
+                        startedAt: incident.startedAt.toISOString(),
+                        recoveredAt: incident.recoveredAt?.toISOString() ?? null,
+                        downtimeMs:
+                            incident.status === "ONGOING"
+                                ? Date.now() - incident.startedAt.getTime()
+                                : incident.downtimeMs,
+                        triggerStatus: incident.triggerStatus,
+                        errorMessage: incident.errorMessage,
+                        httpCode: incident.httpCode,
+                    },
+                    endpoint: { name: endpoint.name, url: endpoint.url },
+                    recentLogs: recentLogs.map((l) => ({
+                        status: l.status,
+                        httpCode: l.httpCode,
+                        errorMessage: l.errorMessage,
+                        dnsStatus: l.dnsStatus,
+                        sslValid: l.sslValid,
+                        responseTime: l.responseTime,
+                        checkedAt: l.checkedAt.toISOString(),
+                    })),
+                    similarPastIncidents: similarPastIncidents.map((i) => ({
+                        startedAt: i.startedAt.toISOString(),
+                        downtimeMs: i.downtimeMs,
+                        errorMessage: i.errorMessage,
+                    })),
+                },
+                { incidentId: incident.id, userId, prisma: ctx.prisma }
+            );
+
+            return {
+                analysis,
+                hasIncident: true as const,
+                incidentId: incident.id,
+                incidentStatus: incident.status === "ONGOING" ? "ongoing" : "resolved",
             };
         }),
 

@@ -199,7 +199,8 @@ export class MonitoringService {
         type: "EMAIL" | "SLACK",
         message: string,
         endpoint: EndpointRef,
-        result: SentMessageInfo | null | SlackAlertResult
+        result: SentMessageInfo | null | SlackAlertResult,
+        kind: NotificationKind = "DOWN"
     ) {
         let status: AlertStatus = "FAIL";
         let metadata: Record<string, any> = {};
@@ -225,6 +226,7 @@ export class MonitoringService {
         await this.prisma.notification.create({
             data: {
                 type,
+                kind,
                 message,
                 status,
                 endpointId: endpoint.id,
@@ -232,4 +234,45 @@ export class MonitoringService {
             },
         });
     }
+
+    async markLogAnomaly(logId: string) {
+        await this.prisma.log.update({
+            where: { id: logId },
+            data: { isAnomaly: true },
+        });
+    }
+
+    async hasRecentNotification(
+        endpointId: string,
+        kind: NotificationKind,
+        sinceMs: number
+    ): Promise<boolean> {
+        const since = new Date(Date.now() - sinceMs);
+        const count = await this.prisma.notification.count({
+            where: {
+                endpointId,
+                kind,
+                sentAt: { gte: since },
+                status: "SEND",
+            },
+        });
+        return count > 0;
+    }
+
+    async countTransientFailures(endpointId: string, sinceMs: number): Promise<number> {
+        const since = new Date(Date.now() - sinceMs);
+        return this.prisma.log.count({
+            where: {
+                endpointId,
+                checkedAt: { gte: since },
+                status: { not: "UP" as HTTPStatus },
+            },
+        });
+    }
 }
+
+export type NotificationKind =
+    | "DOWN"
+    | "DEGRADED"
+    | "SSL_WARNING"
+    | "UNSTABLE";

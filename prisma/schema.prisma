@@ -113,14 +113,16 @@ model Endpoint {
 }
 
 model Setting {
-  id                  String  @id @default(cuid())
+  id                  String    @id @default(cuid())
   email               String?
   slackWebhook        String?
   slackWebhookIv      String?
   slackWebhookAuthTag String?
-  isActive            Boolean @default(false)
+  isActive            Boolean   @default(false)
+  aiCallsCount        Int       @default(0)
+  aiCallsResetAt      DateTime?
   userId              String
-  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId])
   @@map("setting")
@@ -139,6 +141,7 @@ model Log {
   checkedAt     DateTime   @default(now())
   contentHash   String?
   contentLength Int?
+  isAnomaly     Boolean    @default(false)
   endpointId    String
   endpoint      Endpoint   @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
@@ -149,6 +152,7 @@ model Log {
 model Notification {
   id         String      @id @default(cuid())
   type       String
+  kind       String      @default("DOWN")
   message    String
   sentAt     DateTime    @default(now())
   status     AlertStatus
@@ -157,6 +161,7 @@ model Notification {
   endpoint   Endpoint    @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
   @@index([endpointId])
+  @@index([endpointId, kind, sentAt])
   @@map("notification")
 }
 

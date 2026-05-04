@@ -1,9 +1,80 @@
 import OpenAI from "openai";
+import { zodResponseFormat } from "openai/helpers/zod";
 import z from "zod";
+import { PrismaClient } from "../../prisma/generated/prisma/client";
 
 export const OPENAI = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
+
+// ────────────────────────────────────────────────────────────────────────
+// In-memory caches (process-local; reset on cold start)
+// ────────────────────────────────────────────────────────────────────────
+
+const ALERT_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const ANALYSIS_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+type CacheEntry<T> = { value: T; expiresAt: number };
+
+const alertCache = new Map<string, CacheEntry<string>>();
+const analysisCache = new Map<string, CacheEntry<RootCauseAnalysis>>();
+
+function cacheGet<T>(map: Map<string, CacheEntry<T>>, key: string): T | null {
+    const entry = map.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+        map.delete(key);
+        return null;
+    }
+    return entry.value;
+}
+
+function cacheSet<T>(map: Map<string, CacheEntry<T>>, key: string, value: T, ttlMs: number) {
+    map.set(key, { value, expiresAt: Date.now() + ttlMs });
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Per-user rate limit (sliding 1-hour window persisted in Setting)
+// ────────────────────────────────────────────────────────────────────────
+
+const AI_CALLS_PER_HOUR = 50;
+
+export async function checkAndIncrementAiUsage(
+    prisma: PrismaClient,
+    userId: string
+): Promise<{ allowed: boolean; remaining: number }> {
+    const setting = await prisma.setting.findUnique({
+        where: { userId },
+        select: { aiCallsCount: true, aiCallsResetAt: true },
+    });
+
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 60 * 60 * 1000);
+
+    let count = setting?.aiCallsCount ?? 0;
+    let resetAt = setting?.aiCallsResetAt ?? null;
+
+    if (!resetAt || resetAt < windowStart) {
+        count = 0;
+        resetAt = now;
+    }
+
+    if (count >= AI_CALLS_PER_HOUR) {
+        return { allowed: false, remaining: 0 };
+    }
+
+    await prisma.setting.upsert({
+        where: { userId },
+        update: { aiCallsCount: count + 1, aiCallsResetAt: resetAt },
+        create: { userId, aiCallsCount: 1, aiCallsResetAt: now, isActive: true },
+    });
+
+    return { allowed: true, remaining: AI_CALLS_PER_HOUR - (count + 1) };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// 1) Alert message generation (with cache + rate limit)
+// ────────────────────────────────────────────────────────────────────────
 
 const WebsiteStatusSchema = z.object({
     status: z.enum(["UP", "DOWN"]),
@@ -11,13 +82,12 @@ const WebsiteStatusSchema = z.object({
     responseTime: z.number().nullable(),
     errorMessage: z.string().nullable(),
     dnsStatus: z.string(),
-    ip: z.string().nullable(), // Can be null when DNS fails
+    ip: z.string().nullable(),
     sslValid: z.boolean(),
     sslExpiry: z.string().nullable(),
     checkedAt: z.string(),
-    contentHash: z.string().nullable(), // Can be null when request fails
+    contentHash: z.string().nullable(),
     contentLength: z.number().nullable(),
-    // New fields for detailed alerts
     userName: z.string(),
     projectName: z.string(),
     endpointName: z.string(),
@@ -26,8 +96,32 @@ const WebsiteStatusSchema = z.object({
 
 type WebsiteStatus = z.infer<typeof WebsiteStatusSchema>;
 
-export async function generateAlert(input: WebsiteStatus) {
+export type GenerateAlertOptions = {
+    endpointId: string;
+    userId: string;
+    prisma: PrismaClient;
+};
+
+export async function generateAlert(
+    input: WebsiteStatus,
+    opts: GenerateAlertOptions
+): Promise<string | null> {
     const validInput = WebsiteStatusSchema.parse(input);
+
+    const errorType = validInput.errorMessage ?? "UNKNOWN";
+    const cacheKey = `${opts.endpointId}:${errorType}`;
+
+    const cached = cacheGet(alertCache, cacheKey);
+    if (cached) {
+        console.log(`💾 alert cache hit for ${cacheKey}`);
+        return cached;
+    }
+
+    const usage = await checkAndIncrementAiUsage(opts.prisma, opts.userId);
+    if (!usage.allowed) {
+        console.warn(`🚫 AI rate limit hit for user ${opts.userId} — falling back to plain alert`);
+        return null;
+    }
 
     const prompt = `
 You are an AI alert generator for a website uptime monitoring system. You will receive a structured input object containing website status information. Your task is to **create a professional, detailed, and clear alert message** that can be sent to clients whenever a website is down. The message should highlight key information: user name, project name, endpoint name/URL, status, error, DNS, SSL, and actionable suggestions.
@@ -38,48 +132,10 @@ ${JSON.stringify(validInput, null, 2)}
 **Requirements for the Alert Message:**
 1. Only generate the alert if the website status is "DOWN".
 2. Start with a greeting using the user's name.
-3. Include:
-   - User name (greeting)
-   - Project name
-   - Endpoint/Route name and URL
-   - Status (DOWN)
-   - HTTP code (if any)
-   - Error message (clear and detailed)
-   - Response time (if available)
-   - DNS status and IP address
-   - SSL status and expiry (if available)
-   - Timestamp of the check (in human-readable format)
-4. Format should be friendly, professional, and suitable for both emails and Slack messages.
-5. Use emojis sparingly (only for status indicators).
-6. Use bullet points or sections for clarity.
-7. End with a **💡 Suggestion** section—provide 2-3 actionable recommendations based on the specific error.
-
-**Expected Output Format:**
-👋 Hello [UserName],
-
-We noticed an issue with your project **[ProjectName]**.
-
-🚨 **Endpoint:** [EndpointName]
-**URL:** [EndpointUrl]
-
-**Status:** DOWN
-**Error:** [Detailed error message]
-**HTTP Code:** [Code or N/A]
-**Response Time:** [Time in ms or N/A]
-**DNS:** [Status]
-**IP Address:** [IP or N/A if null]
-**SSL:** [Valid/Invalid with expiry if available]
-**Checked At:** [Human-readable timestamp]
-
-💡 **Suggestions:**
-- [Suggestion 1 based on the error]
-- [Suggestion 2]
-- [Suggestion 3 if applicable]
-
-Thanks for staying on top of things!
-**Your Monitoring Team**
-
-**Important:** If IP or contentHash is null, show "N/A" in the alert.
+3. Include user name, project name, endpoint name/URL, status, HTTP code, error, response time, DNS, IP, SSL, timestamp.
+4. Use bullet points or sections for clarity. Use emojis sparingly.
+5. End with a **💡 Suggestion** section with 2-3 actionable recommendations based on the specific error.
+6. If IP or contentHash is null, show "N/A".
 
 Respond ONLY with the formatted alert, no extra text.
 `;
@@ -87,43 +143,139 @@ Respond ONLY with the formatted alert, no extra text.
     try {
         const response = await OPENAI.chat.completions.create({
             model: "gpt-4o-mini",
-            messages: [
-                {
-                    role: "user",
-                    content: prompt,
-                },
-            ],
+            messages: [{ role: "user", content: prompt }],
             temperature: 0.3,
-            max_tokens: 600, // Increased for detailed alerts
+            max_tokens: 600,
         });
 
-        const alertMessage = response.choices?.[0]?.message?.content ?? "";
-        return alertMessage;
+        const message = response.choices?.[0]?.message?.content ?? "";
+        if (message) {
+            cacheSet(alertCache, cacheKey, message, ALERT_TTL_MS);
+        }
+        return message;
     } catch (error) {
         console.error("Error generating alert:", error);
         return null;
     }
 }
 
-// Test code removed - alerts will be sent via monitoring service
+// ────────────────────────────────────────────────────────────────────────
+// 2) Root cause analysis (structured JSON, cached per-incident)
+// ────────────────────────────────────────────────────────────────────────
 
+export const RootCauseAnalysisSchema = z.object({
+    category: z.enum(["NETWORK", "DNS", "SSL", "SERVER", "APPLICATION", "UNKNOWN"]),
+    likelyCause: z.string(),
+    confidence: z.enum(["LOW", "MEDIUM", "HIGH"]),
+    recommendedActions: z.array(z.string()).min(1).max(5),
+    summary: z.string(),
+});
 
-// 👋 Hello [UserName],
+export type RootCauseAnalysis = z.infer<typeof RootCauseAnalysisSchema>;
 
-// We noticed an issue with your project *[ProjectName]*.
+export type AnalyzeIncidentInput = {
+    incident: {
+        id: string;
+        startedAt: string;
+        recoveredAt: string | null;
+        downtimeMs: number;
+        triggerStatus: string;
+        errorMessage: string | null;
+        httpCode: number | null;
+    };
+    endpoint: {
+        name: string;
+        url: string;
+    };
+    recentLogs: Array<{
+        status: string;
+        httpCode: number | null;
+        errorMessage: string | null;
+        dnsStatus: string;
+        sslValid: boolean;
+        responseTime: number | null;
+        checkedAt: string;
+    }>;
+    similarPastIncidents: Array<{
+        startedAt: string;
+        downtimeMs: number;
+        errorMessage: string | null;
+    }>;
+};
 
-// 🚨 *Route/Endpoint:* [RouteName]
+export type AnalyzeIncidentOptions = {
+    incidentId: string;
+    userId: string;
+    prisma: PrismaClient;
+};
 
-// *Status:* DOWN
-// *Error:* [ErrorMessage]
-// *HTTP Code:* [HttpCode]
-// *Response Time:* [ResponseTime] ms
-// *DNS:* [DnsStatus]
-// *IP Address:* [Ip]
-// *SSL:* [SslValid ? "Valid" : "Invalid / Expiry unknown"]
-// *Checked At:* [CheckedAtFormatted]
+export async function analyzeIncident(
+    input: AnalyzeIncidentInput,
+    opts: AnalyzeIncidentOptions
+): Promise<RootCauseAnalysis | null> {
+    const cacheKey = `analysis:${opts.incidentId}`;
 
-// 💡 *Suggestion:* [Short suggestion, e.g., "Please verify server logs or network connection."]
+    const cached = cacheGet(analysisCache, cacheKey);
+    if (cached) {
+        console.log(`💾 analysis cache hit for ${cacheKey}`);
+        return cached;
+    }
 
-// Thanks for staying on top of things!
-// *Your Monitoring Team*
+    const usage = await checkAndIncrementAiUsage(opts.prisma, opts.userId);
+    if (!usage.allowed) {
+        console.warn(`🚫 AI rate limit hit for user ${opts.userId} — analysis skipped`);
+        return null;
+    }
+
+    const systemPrompt = `You are an SRE diagnostician analyzing website downtime incidents. Given an incident, recent monitoring logs, and similar past incidents, identify the most likely root cause category and provide actionable recommendations. Be precise — confidence should reflect actual evidence in the data, not optimism.
+
+Categories:
+- NETWORK: connection refused, reset, packet loss
+- DNS: resolution failures
+- SSL: certificate problems
+- SERVER: 5xx errors, timeouts (server overloaded)
+- APPLICATION: 4xx errors, content errors
+- UNKNOWN: insufficient signal`;
+
+    const userPrompt = `Analyze this incident and return structured JSON.
+
+**Endpoint:** ${input.endpoint.name} (${input.endpoint.url})
+
+**Incident:**
+${JSON.stringify(input.incident, null, 2)}
+
+**Recent logs (most recent first):**
+${JSON.stringify(input.recentLogs.slice(0, 10), null, 2)}
+
+**Similar past incidents (last 30 days):**
+${JSON.stringify(input.similarPastIncidents.slice(0, 5), null, 2)}
+
+Return:
+- category: best-fit category
+- likelyCause: 1-2 sentence specific diagnosis
+- confidence: HIGH only if evidence is clear and consistent
+- recommendedActions: 2-5 specific, ordered actions an operator should take
+- summary: one-line headline for a dashboard card`;
+
+    try {
+        const response = await OPENAI.chat.completions.parse({
+            model: "gpt-4o-mini",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+            ],
+            temperature: 0.2,
+            max_tokens: 600,
+            response_format: zodResponseFormat(RootCauseAnalysisSchema, "incident_analysis"),
+        });
+
+        const parsed = response.choices?.[0]?.message?.parsed ?? null;
+        if (parsed) {
+            cacheSet(analysisCache, cacheKey, parsed, ANALYSIS_TTL_MS);
+        }
+        return parsed;
+    } catch (error) {
+        console.error("Error analyzing incident:", error);
+        return null;
+    }
+}
