@@ -6,8 +6,9 @@ import { api } from '@/trpc/trpc-server/react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Globe, Trash2, ExternalLink, Plus, Copy, Check, AlertTriangle, Loader2 } from 'lucide-react'
+import { Globe, Trash2, ExternalLink, Plus, Copy, Check, AlertTriangle, Loader2, Settings, Lock, Code } from 'lucide-react'
 import { CreateStatusPage } from './create-status-page'
+import { StatusPageSettingsDialog } from './status-page-settings-dialog'
 import type { RouterOutputs } from '@/trpc'
 
 type StatusPages = RouterOutputs['statusPage']['getAll']['data']
@@ -75,6 +76,7 @@ export function StatusPagesList({ initialPages, projects }: Props) {
     const [showCreate, setShowCreate] = useState(false)
     const [copiedId, setCopiedId] = useState<string | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
+    const [settingsTarget, setSettingsTarget] = useState<string | null>(null)
 
     const { mutateAsync: deletePage, isPending: isDeleting } = api.statusPage.delete.useMutation({
         onError: (err) => toast.error(err.message),
@@ -114,6 +116,13 @@ export function StatusPagesList({ initialPages, projects }: Props) {
                 />
             )}
 
+            {settingsTarget && (
+                <StatusPageSettingsDialog
+                    pageId={settingsTarget}
+                    onClose={() => setSettingsTarget(null)}
+                />
+            )}
+
             <div className="pb-4 flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Status Pages</h1>
@@ -121,9 +130,11 @@ export function StatusPagesList({ initialPages, projects }: Props) {
                         Public pages to share your service status with users.
                     </p>
                 </div>
-                <Button onClick={() => setShowCreate(true)} className="gap-1.5">
-                    <Plus className="h-4 w-4" /> New Status Page
-                </Button>
+                {initialPages.length > 0 && (
+                    <Button onClick={() => setShowCreate(true)} className="gap-1.5">
+                        <Plus className="h-4 w-4" /> New Status Page
+                    </Button>
+                )}
             </div>
 
             {initialPages.length === 0 ? (
@@ -158,13 +169,26 @@ export function StatusPagesList({ initialPages, projects }: Props) {
                                             </p>
                                         )}
                                     </div>
-                                    <Badge variant="secondary" className="text-[10px] shrink-0">Public</Badge>
+                                    {page.visibility === "PUBLIC" ? (
+                                        <Badge variant="secondary" className="text-[10px] shrink-0">Public</Badge>
+                                    ) : (
+                                        <Badge className="text-[10px] shrink-0 bg-amber-100 text-amber-700 border-amber-200">
+                                            <Lock className="h-2.5 w-2.5 mr-0.5" /> Password
+                                        </Badge>
+                                    )}
                                 </div>
 
-                                <div className="flex items-center gap-1.5 bg-muted/60 rounded-lg px-3 py-2 mb-3">
+                                <div className="flex items-center gap-1.5 bg-muted/60 rounded-lg px-3 py-2 mb-2">
                                     <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
                                     <span className="text-xs text-muted-foreground truncate flex-1">
                                         /status/{page.slug}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 bg-indigo-50/80 border border-indigo-100 rounded-lg px-3 py-2 mb-3">
+                                    <Code className="h-3 w-3 text-indigo-600 shrink-0" />
+                                    <span className="text-xs text-indigo-700 font-mono truncate flex-1">
+                                        embed: {page.embedKey.slice(0, 14)}…
                                     </span>
                                 </div>
 
@@ -197,7 +221,16 @@ export function StatusPagesList({ initialPages, projects }: Props) {
                                         className="gap-1 text-xs"
                                         onClick={() => window.open(`/status/${page.slug}`, '_blank')}
                                     >
-                                        <ExternalLink className="h-3 w-3" /> View
+                                        <ExternalLink className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="gap-1 text-xs"
+                                        onClick={() => setSettingsTarget(page.id)}
+                                        title="Configure domain, visibility, embed"
+                                    >
+                                        <Settings className="h-3 w-3" />
                                     </Button>
                                     <Button
                                         variant="ghost"

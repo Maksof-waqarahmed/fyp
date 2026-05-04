@@ -33,6 +33,7 @@
     "@trpc/react-query": "^11.8.1",
     "@trpc/server": "^11.8.0",
     "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
     "better-auth": "^1.4.7",
     "class-variance-authority": "^0.7.1",
     "client-only": "^0.0.1",
@@ -57,6 +58,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.5",
     "@types/pg": "^8.16.0",

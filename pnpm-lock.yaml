@@ -62,6 +62,9 @@ importers:
       axios:
         specifier: ^1.13.2
         version: 1.13.2
+      bcrypt:
+        specifier: ^6.0.0
+        version: 6.0.0
       better-auth:
         specifier: ^1.4.7
         version: 1.4.7(@prisma/client@7.1.0(prisma@7.1.0(@types/react@19.2.7)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3))(typescript@5.9.3))(mysql2@3.15.3)(next@16.0.10(@babel/core@7.28.5)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(pg@8.16.3)(prisma@7.1.0(@types/react@19.2.7)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@4.1.5)
@@ -129,6 +132,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.18
+      '@types/bcrypt':
+        specifier: ^6.0.0
+        version: 6.0.0
       '@types/node':
         specifier: ^20
         version: 20.19.27
@@ -2004,6 +2010,9 @@ packages:
   '@tybys/wasm-util@0.10.1':
     resolution: {integrity: sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==}
 
+  '@types/bcrypt@6.0.0':
+    resolution: {integrity: sha512-/oJGukuH3D2+D+3H4JWLaAsJ/ji86dhRidzZ/Od7H/i8g+aCmvkeCc6Ni/f9uxGLSQVCRZkX2/lqEFG2BvWtlQ==}
+
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -2360,6 +2369,10 @@ packages:
   baseline-browser-mapping@2.9.7:
     resolution: {integrity: sha512-k9xFKplee6KIio3IDbwj+uaCLpqzOwakOgmqzPezM0sFJlFKcg30vk2wOiAJtkTSfx0SSQDSe8q+mWA/fSH5Zg==}
     hasBin: true
+
+  bcrypt@6.0.0:
+    resolution: {integrity: sha512-cU8v/EGSrnH+HnxV2z0J7/blxH8gq7Xh2JFT6Aroax7UohdmiJJlxApMxtKfuI7z68NvvVcmR78k2LbT6efhRg==}
+    engines: {node: '>= 18'}
 
   better-auth@1.4.7:
     resolution: {integrity: sha512-kVmDQxzqGwP4FFMOYpS5I7oAaoFW3hwooUAAtcbb2DrOYv5EUvRUDJbTMaPoMTj7URjNDQ6vG9gcCS1Q+0aVBw==}
@@ -3545,12 +3558,20 @@ packages:
       sass:
         optional: true
 
+  node-addon-api@8.7.0:
+    resolution: {integrity: sha512-9MdFxmkKaOYVTV+XVRG8ArDwwQ77XIgIPyKASB1k3JPq3M8fGQQQE3YpMOrKm6g//Ktx8ivZr8xo1Qmtqub+GA==}
+    engines: {node: ^18 || ^20 || >= 21}
+
   node-cron@4.2.1:
     resolution: {integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==}
     engines: {node: '>=6.0.0'}
 
   node-fetch-native@1.6.7:
     resolution: {integrity: sha512-g9yhqoedzIUm0nTnTqAQvueMPVOuIY16bqgAJJC8XOOubYFNwz6IER9qs0Gq2Xd0+CecCKFjtdDTMA4u4xG06Q==}
+
+  node-gyp-build@4.8.4:
+    resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
+    hasBin: true
 
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
@@ -6578,6 +6599,10 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
+  '@types/bcrypt@6.0.0':
+    dependencies:
+      '@types/node': 20.19.27
+
   '@types/chai@5.2.3':
     dependencies:
       '@types/deep-eql': 4.0.2
@@ -6974,6 +6999,11 @@ snapshots:
   balanced-match@1.0.2: {}
 
   baseline-browser-mapping@2.9.7: {}
+
+  bcrypt@6.0.0:
+    dependencies:
+      node-addon-api: 8.7.0
+      node-gyp-build: 4.8.4
 
   better-auth@1.4.7(@prisma/client@7.1.0(prisma@7.1.0(@types/react@19.2.7)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3))(typescript@5.9.3))(mysql2@3.15.3)(next@16.0.10(@babel/core@7.28.5)(react-dom@19.2.1(react@19.2.1))(react@19.2.1))(pg@8.16.3)(prisma@7.1.0(@types/react@19.2.7)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(typescript@5.9.3))(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(vitest@4.1.5):
     dependencies:
@@ -8202,9 +8232,13 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
+  node-addon-api@8.7.0: {}
+
   node-cron@4.2.1: {}
 
   node-fetch-native@1.6.7: {}
+
+  node-gyp-build@4.8.4: {}
 
   node-releases@2.0.27: {}
 

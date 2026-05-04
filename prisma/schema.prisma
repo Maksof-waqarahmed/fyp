@@ -75,14 +75,14 @@ model Verification {
 }
 
 model Project {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   projectName String
   description String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  isDeleted   Boolean    @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  isDeleted   Boolean      @default(false)
   userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   endpoints   Endpoint[]
   statusPages StatusPage[] @relation("StatusPageProjects")
 
@@ -191,18 +191,25 @@ enum IncidentStatus {
 }
 
 model StatusPage {
-  id          String    @id @default(cuid())
-  slug        String    @unique
-  title       String
-  description String?
-  isPublic    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projects    Project[] @relation("StatusPageProjects")
+  id            String               @id @default(cuid())
+  slug          String               @unique
+  embedKey      String               @unique
+  title         String
+  description   String?
+  visibility    StatusPageVisibility @default(PUBLIC)
+  accessKeyHash String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects      Project[]            @relation("StatusPageProjects")
 
   @@map("status_page")
+}
+
+enum StatusPageVisibility {
+  PUBLIC
+  PASSWORD
 }
 
 enum AlertStatus {

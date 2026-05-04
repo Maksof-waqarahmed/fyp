@@ -15,12 +15,6 @@ import { Globe, X, Check, Loader2 } from 'lucide-react'
 
 const schema = z.object({
     title: z.string().min(2, 'Title must be at least 2 characters').trim(),
-    slug: z
-        .string()
-        .min(2, 'Slug must be at least 2 characters')
-        .max(60, 'Slug too long')
-        .regex(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers, and hyphens')
-        .trim(),
     description: z.string().optional(),
 })
 
@@ -48,19 +42,8 @@ export function CreateStatusPage({ projects, onClose }: Props) {
 
     const form = useForm<FormValues>({
         resolver: zodResolver(schema),
-        defaultValues: { title: '', slug: '', description: '' },
+        defaultValues: { title: '', description: '' },
     })
-
-    const titleValue = form.watch('title')
-    const autoSlug = (val: string) =>
-        val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 60)
-
-    function handleTitleChange(val: string) {
-        form.setValue('title', val)
-        if (!form.getValues('slug') || form.getValues('slug') === autoSlug(form.getValues('title').slice(0, -1))) {
-            form.setValue('slug', autoSlug(val))
-        }
-    }
 
     function toggleProject(id: string) {
         setProjectError('')
@@ -102,34 +85,7 @@ export function CreateStatusPage({ projects, onClose }: Props) {
                                     <FormItem>
                                         <FormLabel className="text-xs text-muted-foreground font-medium">Page Title</FormLabel>
                                         <FormControl>
-                                            <Input
-                                                placeholder="Acme Corp Status"
-                                                {...field}
-                                                onChange={e => handleTitleChange(e.target.value)}
-                                            />
-                                        </FormControl>
-                                        <FormMessage className="text-xs" />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField control={form.control} name="slug"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-xs text-muted-foreground font-medium">
-                                            Public URL Slug
-                                        </FormLabel>
-                                        <FormControl>
-                                            <div className="flex items-center border rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring">
-                                                <span className="px-3 py-2 text-xs text-muted-foreground bg-muted border-r shrink-0">
-                                                    /status/
-                                                </span>
-                                                <input
-                                                    {...field}
-                                                    className="flex-1 px-3 py-2 text-sm outline-none bg-transparent"
-                                                    placeholder="acme-corp"
-                                                />
-                                            </div>
+                                            <Input placeholder="Acme Corp Status" {...field} />
                                         </FormControl>
                                         <FormMessage className="text-xs" />
                                     </FormItem>
