@@ -1,513 +1,280 @@
-# AI Agent Context - Uptime Monitoring Project
+# AI Agent Context — AI-Powered Uptime Monitor (FYP)
 
-**Last Updated:** April 8, 2026
-**Project:** AI-Powered Uptime Monitor (FYP)
-**Tech Stack:** Next.js 16, Prisma, tRPC, OpenAI, PostgreSQL
+**Last Updated:** May 2026
+**Tech Stack:** Next.js 16, React 19, Prisma 7, tRPC 11, OpenAI, PostgreSQL, Better Auth, Vitest
 
 ---
 
 ## 📋 Project Overview
 
-This is an **AI-powered website uptime monitoring system** that:
-- Monitors websites/endpoints for availability
-- Performs DNS, SSL, and HTTP health checks
-- Generates intelligent alerts using OpenAI GPT-4o-mini
-- Sends notifications via Email (HTML) and Slack
-- Tracks incidents and provides detailed incident reports
-
----
-
-## 🎨 UI/UX Design Pattern
-
-### Design Philosophy
-- **Professional & Clean**: Gradient headers, color-coded status indicators
-- **Space Utilization**: No empty screen space, balanced layouts
-- **Consistent Components**: Matching design across create-project, incidents, endpoints
-- **Server/Client Separation**: Proper SSR with client-side interactivity
-
-### Color Scheme
-- **Red**: Errors, DOWN status, alerts (`bg-red-500`, `text-red-600`)
-- **Green**: Success, UP status, resolved (`bg-green-500`, `text-green-600`)
-- **Blue**: Information, activity logs (`bg-blue-500`, `text-blue-600`)
-- **Purple**: Request/server info (`bg-purple-500`, `text-purple-600`)
-- **Gradient Headers**: `bg-gradient-to-br from-slate-50 to-white` or similar
-
-### Component Patterns
-1. **Tables**: Gradient headers, pagination, filters, search
-2. **Cards**: Icon + Title + Content with colored accents
-3. **Status Badges**: Colored with animation for ongoing issues
-4. **Detail Pages**: Card grids + side-by-side content sections
-
----
-
-## 🏗️ Architecture Patterns
-
-### Server-Side Rendering (SSR)
-```typescript
-// page.tsx (Server Component)
-import { api } from '@/trpc/trpc-server/server'
-
-export default async function Page() {
-  const initialData = await api.resource.getData()
-  return <ClientComponent initialData={initialData} />
-}
-```
-
-### Client Components with Initial Data
-```typescript
-// client-component.tsx
-"use client"
-
-interface Props {
-  initialData: DataType
-}
-
-export default function ClientComponent({ initialData }: Props) {
-  const { data } = api.resource.getData.useQuery(
-    params,
-    { initialData: shouldUseInitial ? initialData : undefined }
-  )
-}
-```
-
-### tRPC Procedures Pattern
-```typescript
-procedureName: protectedProcedure
-  .input(z.object({ /* validation */ }))
-  .query(async ({ ctx, input }) => {
-    // Logic
-    return data
-  })
-```
+AI-powered website uptime monitoring system that:
+- Monitors websites for availability via cron-based DNS / SSL / HTTP / content-hash checks
+- Detects performance degradation **statistically** (rolling baseline, no LLM)
+- Generates human-readable down alerts via OpenAI (cached + rate-limited)
+- Provides on-demand **AI Root Cause Analysis** with structured JSON output
+- Sends predictive warnings (SSL expiry, unstable endpoints) before they become outages
+- Tracks incidents in a dedicated table (no log-replay computation)
+- Publishes status pages with 90-day uptime visualization
 
 ---
 
 ## 🗄️ Database Schema (Prisma)
 
-### Key Models
+### Models
 
-**User** → Has many Projects, Settings
-**Project** → Has many Endpoints
-**Endpoint** → Has many Logs, Incidents
-**Log** → Records each check (status, DNS, SSL, HTTP, etc.)
-**Incident** → Groups consecutive DOWN logs
-**Setting** → User notification preferences (email, Slack webhook)
-**Notification** → Records sent alerts
+| Model | Purpose | Notable fields |
+|---|---|---|
+| **User** | OAuth users (Google/GitHub) | `email`, `isActive` |
+| **Session / Account / Verification** | Better Auth | — |
+| **Project** | Monitoring projects | `userId`, `isDeleted` |
+| **Endpoint** | URLs to monitor | `checkInterval` (minutes, ≥5), `consecutiveDownCount`, `nextCheckAt`, `lastStatus` |
+| **Setting** | Per-user notification prefs | `email`, encrypted `slackWebhook`+`slackWebhookIv`+`slackWebhookAuthTag`, `aiCallsCount`, `aiCallsResetAt`, `isActive` |
+| **Log** | Each check result | `status`, `httpCode`, `responseTime`, `dnsStatus`, `sslValid`, `sslExpiry`, `contentHash`, `isAnomaly` |
+| **Notification** | Sent alerts ledger | `type` (EMAIL/SLACK), `kind` (DOWN/DEGRADED/SSL_WARNING/UNSTABLE), `status`, `metadata` |
+| **Incident** | Grouped downtime episodes | `status` (ONGOING/RESOLVED), `startedAt`, `recoveredAt`, `downtimeMs`, `triggerStatus`, `triggerLogId`, `errorMessage`, `httpCode` |
+| **StatusPage** | Public status page configs | `slug`, `title`, `projects` (M:N) |
 
-### Important Fields
+### Enums
 
-**Endpoint:**
-- `checkInterval`: How often to check (hours)
-- `nextCheckAt`: DateTime for next scheduled check
-- `lastStatus`: HTTPStatus enum
-
-**Log:**
-- `status`: HTTPStatus (UP, DOWN, REDIRECT, CLIENT_ERROR, UNKNOWN)
-- `httpCode`: HTTP status code (nullable)
-- `responseTime`: Response time in ms (nullable)
-- `errorMessage`: Error description (nullable)
-- `dnsStatus`: DNSStatus enum (RESOLVED, FAILED)
-- `ip`: IP address (nullable - can be null when DNS fails)
-- `sslValid`: Boolean
-- `contentHash`: Content hash (nullable - can be null when request fails)
-
-**Incident:**
-- `status`: "ongoing" | "resolved"
-- `startedAt`: DateTime
-- `recoveredAt`: DateTime (nullable)
-- `downtimeMs`: Duration in milliseconds
-- `triggerStatus`: HTTPStatus
-- `endpointId`: Foreign key to Endpoint
+- `HTTPStatus`: UP, REDIRECT, CLIENT_ERROR, DOWN, UNKNOWN
+- `DNSStatus`: RESOLVED, FAILED
+- `AlertStatus`: SEND, FAIL
+- `IncidentStatus`: ONGOING, RESOLVED
 
 ---
 
-## 🤖 AI Alert System
+## 🤖 AI Layer (`src/services/openAI.ts`)
 
-### OpenAI Integration (`src/services/openAI.ts`)
+### 1) `generateAlert(input, opts)` — Down alert message
 
-**Function:** `generateAlert(input: WebsiteStatus)`
+- Model: `gpt-4o-mini`, temperature 0.3, max 600 tokens
+- **Cache:** in-memory `Map`, key = `${endpointId}:${errorType}`, TTL 30 min
+- **Rate limit:** 50 calls/hour/user (DB-backed sliding window in `Setting`)
+- **Fallback:** returns `null` on rate-limit; caller uses plain template
 
-**Input Schema:**
-```typescript
-{
-  status: "UP" | "DOWN"
-  httpCode: number | null
-  responseTime: number | null
-  errorMessage: string | null
-  dnsStatus: string
-  ip: string | null // Can be null when DNS fails
-  sslValid: boolean
-  sslExpiry: string | null
-  checkedAt: string
-  contentHash: string | null // Can be null when request fails
-  contentLength: number | null
-  userName: string // User context (NEW)
-  projectName: string // Project context (NEW)
-  endpointName: string // Endpoint context (NEW)
-  endpointUrl: string // URL being monitored (NEW)
-}
-```
+### 2) `analyzeIncident(input, opts)` — Root cause analysis
 
-**Configuration:**
-- Model: `gpt-4o-mini`
-- Temperature: `0.3` (consistent responses)
-- Max Tokens: `600` (detailed responses)
+- Model: `gpt-4o-mini`, temperature 0.2, max 600 tokens
+- **Structured JSON output** via `zodResponseFormat` (OpenAI parse helper)
+- Schema:
+  ```ts
+  {
+    category: "NETWORK" | "DNS" | "SSL" | "SERVER" | "APPLICATION" | "UNKNOWN",
+    likelyCause: string,
+    confidence: "LOW" | "MEDIUM" | "HIGH",
+    recommendedActions: string[1..5],
+    summary: string,
+  }
+  ```
+- Inputs: incident + last 10 logs + last 5 similar resolved incidents (30-day window)
+- **Cache:** in-memory, key = `analysis:${incidentId}`, TTL 1 hour
+- **Rate limit:** shares 50/hr quota with `generateAlert`
 
-**Output Format:**
-- Professional alert with user/project/endpoint context
-- Detailed issue information
-- Actionable suggestions based on error type
-- Formatted with markdown for HTML emails and Slack
+### 3) `checkAndIncrementAiUsage(prisma, userId)`
 
-### Alert Sending (`src/services/alert-services.ts`)
-
-**Email:**
-- SMTP: Gmail port 587 (TLS)
-- HTML formatting with markdown conversion
-- Dynamic subjects based on endpoint/project
-- Environment variables: `SMTP_USER`, `SMTP_PASS`
-
-**Slack:**
-- Webhook URL (encrypted in database)
-- Formatted messages with emoji
-- Encryption key: `ENCRYPTION_KEY`
+Sliding 1-hour window. Resets `aiCallsCount` when `aiCallsResetAt` falls outside the window.
 
 ---
 
-## 🔄 Monitoring Flow
+## 📊 Statistical Anomaly Detection (`src/lib/anomaly-detector.ts`)
 
-### Cron Job Schedule
-- **Frequency:** Every 5 minutes (`*/5 * * * *`)
-- **Location:** `src/services/cron.ts`
-- **Trigger:** Runs `runEndpointMonitoring()`
+**Free, no LLM.** Runs on every UP check.
 
-### Monitoring Execution (`src/services/run-monitoring.ts`)
-
-1. **Fetch Due Endpoints:** Get endpoints where `nextCheckAt <= now`
-2. **Perform Checks:** DNS, SSL, HTTP via `log-script.ts`
-3. **Save Log:** Store results in Log table
-4. **Detect Status Change:** Compare with `lastStatus`
-5. **Generate Alert:** If DOWN, call `generateAlert()` with full context
-6. **Send Notifications:** Email and Slack via `alert-services.ts`
-7. **Update Endpoint:** Set `nextCheckAt`, `lastStatus`
-8. **Create/Update Incident:** Group consecutive DOWN logs
-
-### Incident Tracking Algorithm
-
-**Create New Incident:**
-- First DOWN log for an endpoint
-- Or previous incident was resolved
-
-**Update Ongoing Incident:**
-- Consecutive DOWN logs increment `downtimeMs`
-
-**Resolve Incident:**
-- UP log after DOWN logs
-- Set `recoveredAt`, final `downtimeMs`, status = "resolved"
+- Pulls last 7 days of UP responseTime samples for the endpoint
+- Computes mean + stddev (requires ≥20 samples)
+- Z-score = (current − mean) / stddev
+- Anomaly if z > 2 → marks `Log.isAnomaly = true` + sends DEGRADED notification (throttled 6h)
 
 ---
 
-## 📄 Key Pages & Components
+## 🔄 Monitoring Flow (`src/services/run-monitoring.ts`)
 
-### Dashboard (`/dashboard`)
-- Cards: Total endpoints, UP, DOWN, response time
-- Recent activity terminal
-- Add URLs form
-
-### Projects (`/dashboard/monitoring/create-project`)
-- Create project form
-- All projects table with pagination
-- Gradient table header design
-
-### Endpoints (`/dashboard/monitoring/allEndPoints`)
-- All endpoints table
-- Status indicators, response time, last check
-
-### Incidents (`/dashboard/incidents`)
-
-**Main Page (`page.tsx`):**
-- Server component
-- Fetches initial data with `api.logs.getAllIncidentsTable`
-- Passes to `<IncidentTable initialData={...} />`
-
-**Client Component (`_components/incident-table.tsx`):**
-- Status filter: All, Ongoing, Resolved
-- Search by endpoint/project name
-- Pagination (10, 25, 50 per page)
-- Summary cards: Total, Ongoing, Resolved, Avg Downtime
-- Table columns: Endpoint, Project, Status, Started, Duration, Trigger
-- Gradient table header matching create-project style
-
-**Detail Page (`/dashboard/incidents/[id]/page.tsx`):**
-- Dynamic route for specific endpoint incidents
-- **Layout:** 2-row grid
-  - **Top Row:** 4 cards (Root Cause, Status, Duration, Request)
-  - **Bottom Row:** Activity Log + Response (side-by-side)
-- Real-time incident status with pulse animation
-- Activity log with all status changes
-- Response details (JSON formatted)
-
-### tRPC Procedures for Incidents
-
-**`getAllIncidentsTable`:**
-```typescript
-Input: { page, limit, status?, search? }
-Output: { incidents[], total, page, totalPages, summary }
+```
+┌─ Cron tick (Vercel cron OR local node-cron, every 5 min)
+│
+├─ For each endpoint where nextCheckAt ≤ now:
+│   ├─ DNS + SSL + HTTP + content hash (parallel)
+│   ├─ Compute new consecutiveDownCount (anti-spam state machine)
+│   ├─ INSERT Log (with isAnomaly placeholder)
+│   ├─ UPDATE Endpoint (nextCheckAt, lastStatus, consecutiveDownCount)
+│   ├─ UPSERT Incident (open / update downtime / resolve)
+│   │
+│   ├─ if DOWN and shouldAlert:
+│   │     generateAlert() → email + slack (kind=DOWN)
+│   │     continue;          ← skip anomaly + predictive while DOWN
+│   │
+│   ├─ if UP + responseTime not null:
+│   │     detectResponseTimeAnomaly() → mark Log + DEGRADED alert (6h throttle)
+│   │
+│   ├─ if SSL valid + expires < 14 days:
+│   │     SSL_WARNING alert (7-day throttle)
+│   │
+│   └─ if non-UP checks in last 24h > 5:
+│         UNSTABLE alert (24h throttle)
 ```
 
-**`getEndpointsWithIncidents`:**
-```typescript
-Output: All endpoints with incident counts
+### Anti-spam alert state machine
+
+```
+DOWN check 1 → count=1 → ALERT (DOWN)
+DOWN check 2 → count=2 → silent
+DOWN check 3 → count=3 → silent
+DOWN check 4 → count=4 → ALERT (DOWN), reset count to 1
+… (cycle repeats every 4 checks while DOWN)
+UP check     → count=0 → reset
 ```
 
-**`getEndpointIncidentDetail`:**
-```typescript
-Input: { endpointId }
-Output: { endpoint, currentIncident, activityLog[] }
-```
+### Notification throttling
+
+| Kind | Throttle window |
+|---|---|
+| DOWN | counter-based (1st, then every 4th) |
+| DEGRADED | 6 hours |
+| SSL_WARNING | 7 days |
+| UNSTABLE | 24 hours |
+
+Throttling is enforced via `MonitoringService.hasRecentNotification(endpointId, kind, sinceMs)` querying the Notification table.
 
 ---
 
-## 🔧 Common Development Patterns
+## ⏰ Cron Deployment
 
-### Adding New Dashboard Page
+**Production (Vercel):**
+- `/api/cron/run` (GET) authenticates via `Authorization: Bearer ${CRON_SECRET}`
+- Schedule defined in `vercel.json`: `*/5 * * * *`
+- `runtime = "nodejs"`, `maxDuration = 300`
 
-1. Create folder in `src/app/dashboard/your-feature/`
-2. Create `page.tsx` (server component) for initial data fetch
-3. Create `_components/your-feature-client.tsx` for interactivity
-4. Add tRPC procedure in `src/trpc/api/router/`
-5. Import procedure in `src/trpc/api/routes.ts`
+**Local dev:**
+- `pnpm cron` runs `src/services/cron.ts` (node-cron in-process)
+- Logs warning if `NODE_ENV === "production"` (use Vercel cron there)
 
-### Creating tRPC Procedure
+---
 
-```typescript
-// src/trpc/api/router/resource/index.ts
-import { protectedProcedure, createTRPCRouter } from "@/trpc/trpc"
-import { z } from "zod"
+## 🧪 Tests (Vitest)
 
-export const resourceRouter = createTRPCRouter({
-  getData: protectedProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const data = await ctx.db.model.findUnique({
-        where: { id: input.id }
-      })
-      return data
-    })
-})
-```
+- `pnpm test` — runs once
+- `pnpm test:watch` — watch mode
+- Config: `vitest.config.ts` with `@/` alias resolver
+- Folder: `test/lib/`
 
-### Database Updates
+| File | Coverage |
+|---|---|
+| `test/lib/log-script.test.ts` | `getStatusType`, `classifyError` (HTTP code mapping + error type detection) |
+| `test/lib/anomaly-detector.test.ts` | Baseline math, sample size guard, anomaly flagging, edge cases (null, zero/negative samples) |
+| `test/lib/enc-dec.test.ts` | AES-256-GCM round-trip, IV uniqueness, tamper detection, unicode/empty/long strings, missing key error |
+
+26 tests across 3 files, ~3s runtime.
+
+---
+
+## 🔌 tRPC Routers
+
+| Router | Procedures |
+|---|---|
+| `project` | CRUD on Project |
+| `endpoint` | CRUD on Endpoint, `getEndpointsByProject`, `getAllEndPoints` |
+| `logs` | `getAllLogs`, `getRecentLogs`, `getLog`, `getEndpointsWithIncidents`, `getEndpointIncidentDetail`, `getAllIncidentsTable`, **`analyzeIncident`** (AI root cause), `cleanupOldLogs`, `exportLogs` |
+| `dashboardAnalysis` | `getAnalysis`, `getUptimeTrends`, `getResponseTimeTrends`, `getEndpointHealthSummary`, `getNotificationStats`, `getSlowestEndpoints` |
+| `userSetting` | `getSettingDetail`, `alertSetting`, `toggleNotifications`, `testNotification` |
+| `statusPage` | `create`, `getAll`, `delete`, `getBySlug` (public) |
+
+All incident procedures query the `Incident` table directly — **no in-memory log replay**.
+
+---
+
+## 🎨 UI / UX
+
+### Incident Detail Page (`/dashboard/incidents/[id]`)
+
+- 4 status cards (Root Cause, Status, Duration, Request)
+- **AI Root Cause Analysis card** (lazy-load via "Analyze with AI" button)
+  - Category badge + confidence badge
+  - Summary headline
+  - LikelyCause paragraph
+  - Numbered recommended actions
+- Activity Log + Response (side-by-side, 600px scroll)
+
+### Settings (`/dashboard/user-setting`)
+
+Email + Slack only. WhatsApp removed (May 2026).
+
+---
+
+## 🔐 Environment Variables
+
+See `.env.example` for the canonical list. Required:
+
+| Var | Purpose |
+|---|---|
+| `DATABASE_URL` | Postgres connection |
+| `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL` | Auth |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth |
+| `SMTP_USER` / `SMTP_PASS` | Email alerts (Gmail App Password) |
+| `ENCRYPTION_KEY` | 64-hex chars (32 bytes) for Slack webhook AES-256-GCM |
+| `OPENAI_API_KEY` | AI alerts + root cause |
+| `CRON_SECRET` | Production cron auth (Vercel) |
+
+---
+
+## 📦 Scripts
 
 ```bash
-# After editing prisma/schema.prisma
-pnpm db:push         # Push schema to database
-pnpm db:generate     # Regenerate Prisma client
-```
-
-### Styling Components
-
-- Use Tailwind utility classes
-- Gradient backgrounds: `bg-gradient-to-br from-X to-Y`
-- Status colors: `bg-red-500`, `bg-green-500`, etc.
-- Responsive grids: `grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
-- Max heights with scroll: `max-h-[600px] overflow-y-auto`
-
----
-
-## ⚠️ Important Notes & Known Issues
-
-### Email Delivery
-- **Issue:** Gmail SMTP may timeout or block
-- **Solution:** Use Gmail App Password or switch to Brevo/SendinBlue
-- **Config:** Port 587 (TLS), not 465 (SSL)
-
-### Zod Schema Validation
-- **Important:** `ip` and `contentHash` can be `null`
-- Always use `.nullable()` for fields that can fail
-- DNS failure → `ip: null`
-- Request failure → `contentHash: null`
-
-### Cron Frequency
-- Set to 5 minutes to avoid spam
-- Can be adjusted in `src/services/cron.ts`
-- Format: `*/5 * * * *` (every 5 minutes)
-
-### Incident Algorithm
-- Groups consecutive DOWN logs automatically
-- Resolves when UP log detected
-- Calculates downtime in milliseconds
-
----
-
-## 📦 Environment Variables
-
-```env
-# Database
-DATABASE_URL="postgresql://..."
-
-# Authentication
-BETTER_AUTH_SECRET="..."
-BETTER_AUTH_URL="http://localhost:3000"
-GOOGLE_CLIENT_ID="..."
-GOOGLE_CLIENT_SECRET="..."
-
-# Email
-SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-app-password"
-
-# Encryption
-ENCRYPTION_KEY="32-character-key"
-
-# OpenAI
-OPENAI_API_KEY="sk-..."
+pnpm dev              # Next.js dev server
+pnpm build            # Production build
+pnpm start            # Production server
+pnpm lint             # ESLint
+pnpm test             # Vitest (one-shot)
+pnpm test:watch       # Vitest watch
+pnpm db:push          # Apply Prisma schema to DB
+pnpm db:generate      # Regenerate Prisma client
+pnpm cron             # Local-only cron runner (dev)
+pnpm add:ui <name>    # Shadcn component
 ```
 
 ---
 
-## 🎯 User Preferences & Feedback
+## 📝 Recent Changes (Phase 1 → 4)
 
-### Design Preferences
-- **Clean & Professional:** No clutter, balanced layouts
-- **Full Screen Usage:** No empty space complaints
-- **Consistent Theming:** Match existing components
-- **Color Coding:** Red (error), Green (success), Blue (info), Purple (request)
+### Phase 1 — Quick wins
+- `Endpoint.checkInterval` switched to **minutes** (min 5)
+- `Endpoint.consecutiveDownCount` added — drives anti-spam alert cadence
+- `Setting.whatsappNumber` removed
+- `Untitled-2.md` cleanup
 
-### Development Approach
-- Read files before editing/writing
-- Always use proper component separation (server/client)
-- Implement filters, search, and pagination for tables
-- Match design of existing components (create-project style)
+### Phase 2 — Architecture
+- New **`Incident` model** + `IncidentStatus` enum (no more log-replay)
+- `MonitoringService.upsertIncident()` lifecycle (open / update downtime / resolve)
+- All incident tRPC procedures refactored to query the table directly
+- Production cron via **`/api/cron/run`** + `vercel.json`
+- Local `cron.ts` demoted to dev-only
 
-### Communication Style
-- User uses Urdu/Roman Urdu in messages
-- Prefers direct implementation over lengthy explanations
-- Values professional, production-ready code
+### Phase 3 — AI deepening
+- **Statistical anomaly detection** (`src/lib/anomaly-detector.ts`)
+- **AI Root Cause Analysis** (`analyzeIncident`) with structured JSON
+- AI alert cache (30 min) + per-user rate limit (50/hour)
+- Predictive SSL expiry + unstable-endpoint warnings (throttled)
+- `Notification.kind` for cleaner throttling
+- AI Analysis card on incident detail page
 
----
-
-## 📚 Quick Commands
-
-```bash
-# Development
-pnpm dev              # Start dev server (localhost:3000)
-
-# Database
-pnpm db:push          # Push schema to database
-pnpm db:generate      # Generate Prisma client
-pnpm db:studio        # Open Prisma Studio
-
-# Production
-pnpm build            # Build for production
-pnpm start            # Start production server
-
-# Monitoring
-pnpm cron             # Manually run cron job
-
-# UI Components
-pnpm add:ui <name>    # Add Shadcn component
-```
+### Phase 4 — Polish
+- Vitest setup + 26 tests across 3 files (log-script, anomaly-detector, enc-dec)
+- `.env.example`
+- Architecture diagram in README
+- Docs sync
 
 ---
 
-## 🔍 File Locations Reference
+## 🎓 Defense talking points
 
-| What | Where |
-|------|-------|
-| **AI Alert Generation** | `src/services/openAI.ts` |
-| **Alert Sending (Email/Slack)** | `src/services/alert-services.ts` |
-| **Monitoring Execution** | `src/services/run-monitoring.ts` |
-| **Cron Job Setup** | `src/services/cron.ts` |
-| **Website Check Logic** | `src/lib/log-script.ts` |
-| **Monitoring Service Class** | `src/lib/monitoring-service.ts` |
-| **Database Schema** | `prisma/schema.prisma` |
-| **Authentication** | `src/lib/auth.ts` |
-| **tRPC Configuration** | `src/trpc/trpc.ts` |
-| **tRPC Routes** | `src/trpc/api/routes.ts` |
-| **Incidents API** | `src/trpc/api/router/log/index.ts` |
-| **Incidents Page** | `src/app/dashboard/incidents/` |
-| **Incidents Table** | `src/app/dashboard/incidents/_components/incident-table.tsx` |
-| **Incident Detail** | `src/app/dashboard/incidents/[id]/page.tsx` |
-| **Dashboard** | `src/app/dashboard/page.tsx` |
-| **Projects** | `src/app/dashboard/monitoring/create-project/` |
-| **Endpoints** | `src/app/dashboard/monitoring/allEndPoints/` |
-| **Shadcn Components** | `src/components/ui/` |
-| **Schemas** | `src/schemas/` |
+1. **AI is more than a chat wrapper** — three distinct uses:
+   - Generative (alert messages)
+   - Diagnostic (root cause analysis with structured output)
+   - Statistical (anomaly detection — not even an LLM, but explicit ML)
 
----
+2. **Cost-aware AI** — two-tier caching (in-memory + DB-backed rate limit), graceful fallback to plain templates on limit
 
-## 🚀 Recent Implementations
+3. **Anti-spam is principled** — counter-based DOWN alerts + per-kind throttle windows, all enforced via the Notification ledger
 
-### Latest Features (April 2026)
+4. **Production-ready architecture** — Vercel cron + serverless-compatible code path, encrypted secrets, type-safe end-to-end (tRPC + Zod), tested critical paths (Vitest)
 
-1. **Enhanced AI Alerts**
-   - Added user/project/endpoint context to alerts
-   - Increased token limit to 600 for detailed responses
-   - HTML email formatting with markdown
-
-2. **Incident Management System**
-   - Main incidents table with filters (ongoing/resolved)
-   - Search functionality across endpoints/projects
-   - Pagination (10, 25, 50 per page)
-   - Summary cards (total, ongoing, resolved, avg downtime)
-   - Dynamic detail pages for each endpoint
-
-3. **Incident Detail Page Redesign**
-   - 2-row layout: 4 cards on top, activity + response side-by-side
-   - No empty space, full screen utilization
-   - Real-time status indicators with animations
-
-4. **Cron Optimization**
-   - Changed from every minute to every 5 minutes
-   - Prevents notification spam
-
-5. **Email Configuration**
-   - Switched from port 465 (SSL) to 587 (TLS)
-   - Added retry logic and better error handling
-
----
-
-## 💡 Development Tips
-
-### When Adding Features
-1. Check existing patterns in similar components
-2. Match design of create-project/incidents tables
-3. Use server components for initial data fetch
-4. Use client components for filters/search/pagination
-5. Always add proper TypeScript types
-6. Use Zod for input validation
-
-### When Debugging
-1. Check browser console for client errors
-2. Check terminal for server/tRPC errors
-3. Use Prisma Studio to inspect database
-4. Check `.env` file for missing variables
-5. Verify Prisma schema is up to date
-
-### Best Practices
-- Always read files before editing
-- Use TodoWrite for complex multi-step tasks
-- Match existing component structure
-- Keep server/client separation clear
-- Add proper error handling
-- Use nullable types where data can fail
-
----
-
-## 🎓 Learning Resources
-
-### Project Structure
-- Read `project_structure.md` for full architecture
-- Check `prisma/schema.prisma` for database models
-- Review existing pages for component patterns
-
-### Tech Stack Docs
-- Next.js: https://nextjs.org/docs
-- Prisma: https://www.prisma.io/docs
-- tRPC: https://trpc.io/docs
-- Shadcn UI: https://ui.shadcn.com
-- OpenAI: https://platform.openai.com/docs
-
----
-
-**This file should be provided to future AI agents to maintain context across conversations.**
+5. **Incident model is materialized** — query performance scales linearly with incident count, not log count

@@ -1,7 +1,8 @@
-# AI-Powered Uptime Monitor - Project Structure Guide
+# AI-Powered Uptime Monitor — Project Structure
 
 ## Overview
-This is an **AI-powered website uptime monitoring system** built with Next.js, Prisma, tRPC, and OpenAI. The system monitors websites and sends AI-generated alerts when they go down.
+
+Next.js 16 + Prisma 7 + tRPC 11 + OpenAI uptime monitoring system with **statistical anomaly detection**, **AI root cause analysis**, encrypted Slack webhooks, and public status pages.
 
 ---
 
@@ -9,456 +10,165 @@ This is an **AI-powered website uptime monitoring system** built with Next.js, P
 
 ```
 fyp/
-├── src/                    # Main source code folder
-│   ├── app/               # Next.js App Router pages
-│   ├── components/        # Reusable React components
-│   ├── hooks/            # Custom React hooks
-│   ├── lib/              # Core business logic libraries
-│   ├── schemas/          # Zod validation schemas
-│   ├── services/         # Backend services (AI, alerts, monitoring)
-│   ├── trpc/             # tRPC API routes and server setup
-│   └── types/            # TypeScript type definitions
-├── prisma/               # Database schema and migrations
-├── public/               # Static assets (images, fonts, etc.)
-├── .next/                # Next.js build output (auto-generated)
-└── node_modules/         # Dependencies (auto-generated)
+├── prisma/
+│   └── schema.prisma          # Postgres schema (User, Project, Endpoint, Log, Incident, Setting, Notification, StatusPage)
+├── public/                    # Static assets
+├── src/
+│   ├── app/                   # Next.js App Router
+│   │   ├── api/
+│   │   │   ├── auth/[...all]/route.ts    # Better Auth handler
+│   │   │   ├── trpc/[trpc]/route.ts      # tRPC entrypoint
+│   │   │   └── cron/run/route.ts         # Vercel Cron entrypoint (auth via CRON_SECRET)
+│   │   ├── auth/signin/                  # OAuth signin page
+│   │   ├── dashboard/                    # Protected dashboard
+│   │   │   ├── _components/              # Sidebar, header, terminal, recent-activity, etc.
+│   │   │   ├── incidents/                # Incident list + detail (with AI Analysis card)
+│   │   │   ├── monitoring/               # Projects, endpoints, logs
+│   │   │   ├── status-pages/             # Public status page configs
+│   │   │   └── user-setting/             # Notification prefs (email + slack)
+│   │   ├── status/[slug]/page.tsx        # Public status page (no auth, direct Prisma)
+│   │   └── layout.tsx
+│   ├── components/ui/                    # Shadcn primitives
+│   ├── hooks/                            # use-mobile, etc.
+│   ├── lib/
+│   │   ├── auth.ts / auth-client.ts / auth-sever.ts   # Better Auth
+│   │   ├── enc-dec.ts                    # AES-256-GCM (Slack webhook encryption)
+│   │   ├── log-script.ts                 # DNS / SSL / HTTP / content-hash checks
+│   │   ├── monitoring-service.ts         # MonitoringService class (DB ops + incident lifecycle)
+│   │   ├── anomaly-detector.ts           # Rolling baseline z-score anomaly detection
+│   │   ├── prisma.ts                     # Prisma client singleton
+│   │   └── utils.ts
+│   ├── schemas/                          # Zod input schemas
+│   ├── services/
+│   │   ├── alert-services.ts             # Email (Nodemailer) + Slack (axios)
+│   │   ├── cron.ts                       # LOCAL-DEV cron (node-cron) — prod uses Vercel Cron
+│   │   ├── openAI.ts                     # generateAlert + analyzeIncident + cache + rate limit
+│   │   └── run-monitoring.ts             # Per-tick orchestrator
+│   ├── trpc/                             # tRPC routers
+│   │   ├── api/router/
+│   │   │   ├── project/, endPoint/, log/, dashboard-analysis/,
+│   │   │   ├── user-setting/, status-page/
+│   │   │   └── routes.ts                 # Composed appRouter
+│   │   ├── trpc.ts                       # protectedProcedure + ctx
+│   │   └── trpc-server/ (server.ts, react.tsx)
+│   └── types/                            # Frontend types (incidents, logs, projects, endpoints)
+├── test/
+│   └── lib/
+│       ├── log-script.test.ts            # Status code + error classification
+│       ├── anomaly-detector.test.ts      # Baseline math, threshold, edge cases
+│       └── enc-dec.test.ts               # AES round-trip + tamper detection
+├── vercel.json                           # Vercel Cron config (every 5 min → /api/cron/run)
+├── vitest.config.ts                      # Vitest runner with @/ alias
+├── .env.example
+├── README.md
+├── agent.md
+└── project_structure.md
 ```
 
 ---
 
-## 📁 Detailed Folder Breakdown
+## Database Schema (`prisma/schema.prisma`)
 
-### 1. **src/app/** - Next.js App Router Pages
+| Model | Key behavior |
+|---|---|
+| **User** | OAuth users, has `setting`, `projects`, `statusPages` |
+| **Project** | Soft-deletable, owns `endpoints` |
+| **Endpoint** | `checkInterval` (minutes, ≥5), `consecutiveDownCount` (anti-spam state), `nextCheckAt`, `lastStatus`, has `logs`, `notifications`, `incidents` |
+| **Setting** | One per user. Encrypted Slack webhook (3 fields), `aiCallsCount` + `aiCallsResetAt` for rate limit |
+| **Log** | Each check; `status`, `httpCode`, `responseTime`, `dnsStatus`, `sslValid`, `sslExpiry`, `contentHash`, `isAnomaly` |
+| **Notification** | `type` (EMAIL/SLACK) + `kind` (DOWN/DEGRADED/SSL_WARNING/UNSTABLE) + status + metadata. Composite index on `(endpointId, kind, sentAt)` for throttle queries |
+| **Incident** | `status` ONGOING/RESOLVED, `startedAt`, `recoveredAt`, `downtimeMs`, `triggerStatus`, `triggerLogId`, `errorMessage`, `httpCode`. Indexed on `(endpointId, status)` and `(status, startedAt)` |
+| **StatusPage** | M:N with Project. Public via slug |
 
-This folder follows the Next.js App Router structure. Each subfolder represents a route in the application.
-
-#### Files and Folders:
-
-- **`globals.css`**: Global CSS styles
-- **`layout.tsx`**: Root layout for entire app
-- **`api/`**: Backend API routes
-  - **`auth/[...all]/route.ts`**: Better Auth authentication endpoints (Google/GitHub OAuth)
-  - **`trpc/[trpc]/route.ts`**: tRPC main API endpoint (all procedures are called through this)
-  - **`cron/`**: Cron job endpoints (for future use)
-
-- **`auth/signin/`**: Sign-in page
-  - **`page.tsx`**: Sign-in page UI
-  - **`_components/signIn-form.tsx`**: Sign-in form component
-
-- **`dashboard/`**: Main dashboard area (protected routes)
-  - **`page.tsx`**: Dashboard home page
-  - **`layout.tsx`**: Dashboard layout with sidebar
-  - **`_components/`**: Dashboard-specific components
-    - `add-urls-form.tsx`: Form for adding new endpoints
-    - `app-sidebar.tsx`: Sidebar navigation
-    - `cards.tsx`: Dashboard cards (statistics)
-    - `header.tsx`: Top header bar
-    - `recent-activity.tsx`: Recent logs/activity display
-    - `terminal.tsx`: Terminal-style log viewer
-
-  - **`monitoring/`**: Monitoring section
-    - **`create-project/`**: Project creation page
-      - `page.tsx`: Project creation UI
-      - `_components/create-project.tsx`: Create project form
-      - `_components/all-projects.tsx`: Projects list display
-      - `_components/pagination.tsx`: Pagination component
-
-    - **`addEndpoints/[id]/`**: Add endpoints to specific project
-      - `page.tsx`: Add endpoints page
-      - `_components/addEndpoints.tsx`: Add endpoint form
-
-    - **`allEndPoints/`**: View all endpoints
-      - `page.tsx`: All endpoints page
-      - `_components/allEndPointsTable.tsx`: Endpoints table
-
-    - **`logs/`**: View monitoring logs
-      - `page.tsx`: Logs page
-      - `_components/`: Log display components
-
-  - **`incidents/`**: Incident management (NEW)
-    - **`page.tsx`**: Server component - Incidents main page (fetches initial data)
-    - **`_components/incident-table.tsx`**: Client component - Interactive table with filters, search, pagination
-    - **`[id]/page.tsx`**: Dynamic incident detail page
-      - Shows 4 cards: Root Cause, Status, Duration, Request
-      - Activity log and Response sections side-by-side
-      - Real-time incident tracking
+**Enums:** `HTTPStatus`, `DNSStatus`, `AlertStatus`, `IncidentStatus`
 
 ---
 
-### 2. **src/components/** - Reusable UI Components
+## Key Modules
 
-Shadcn UI components and custom reusable components are stored here. Examples:
-- Buttons, Cards, Dialogs, Forms, Tables, etc.
-- `ui/` subfolder contains Shadcn components
+### `src/lib/log-script.ts` — Network probes
+- `checkDNS(hostname)` — DNS resolution
+- `checkSSL(hostname)` — TLS cert validity + expiry
+- `checkEndpoint(url)` — HTTP fetch with 8s timeout, returns status type
+- `getContentHash(url)` — SHA-256 of response body
+- `getStatusType(code)` — map HTTP code to enum
+- `classifyError(err)` — TIMEOUT / DNS_NOT_FOUND / CONNECTION_REFUSED / CONNECTION_RESET / SSL_ERROR / NETWORK_ERROR
 
----
+### `src/lib/anomaly-detector.ts` — Statistical performance regression
+- `detectResponseTimeAnomaly(prisma, endpointId, currentMs)`
+- 7-day rolling baseline (mean + stddev) of UP responseTime samples
+- Returns `{ isAnomaly, baseline: { mean, stddev, sampleSize } | null, zScore }`
+- Requires ≥20 samples, threshold z > 2
 
-### 3. **src/hooks/** - Custom React Hooks
+### `src/lib/monitoring-service.ts` — DB orchestrator class
+- `getEndPoints()` — endpoints due for check (with project + user + setting joined)
+- `createLogs(...)` — INSERT Log, returns the row
+- `updateEndPoints(endpoint, httpResult, consecutiveDownCount)` — UPDATE endpoint state
+- `upsertIncident(endpoint, httpResult, log)` — open / update / resolve Incident
+- `markLogAnomaly(logId)` — set isAnomaly = true
+- `createNotification(type, message, endpoint, result, kind)` — INSERT Notification
+- `hasRecentNotification(endpointId, kind, sinceMs)` — throttle check
+- `countTransientFailures(endpointId, sinceMs)` — for UNSTABLE warning
 
-Custom React hooks that make application logic reusable:
-- Data fetching hooks
-- Form handling hooks
-- Authentication state hooks
+### `src/services/openAI.ts` — AI layer
+- `generateAlert(input, opts)` — DOWN alert message (cached 30 min by `endpointId:errorType`)
+- `analyzeIncident(input, opts)` — structured JSON root cause (cached 1 hour by incidentId)
+- `checkAndIncrementAiUsage(prisma, userId)` — sliding 1-hour rate limit (50/hr)
 
----
-
-### 4. **src/lib/** - Core Business Logic
-
-This is the most important folder - contains core services and utilities:
-
-#### Files:
-
-- **`auth.ts`**: Better Auth configuration (Google/GitHub OAuth setup)
-- **`auth-client.ts`**: Client-side authentication utilities
-- **`auth-sever.ts`**: Server-side authentication utilities
-- **`enc-dec.ts`**: Encryption/Decryption functions (for Slack webhook encryption)
-- **`log-script.ts`**: Website monitoring script (performs DNS, SSL, and HTTP checks)
-- **`monitoring-service.ts`**: Main monitoring service class
-  - Fetches endpoints to monitor
-  - Creates monitoring logs
-  - Creates notifications
-  - Handles all database operations
-- **`prisma.ts`**: Prisma client initialization
-- **`utils.ts`**: General utility functions
-
----
-
-### 5. **src/services/** - Backend Services
-
-AI and cron-related services:
-
-#### Files:
-
-- **`openAI.ts`**: **IMPORTANT - AI Agent Code**
-  - OpenAI API integration
-  - `generateAlert()` function - Generates AI alert messages when a website goes down
-  - Input: Website status (DOWN/UP, error, DNS, SSL, userName, projectName, endpointName, endpointUrl)
-  - Output: Detailed professional alert message with user/project context and actionable suggestions
-  - Uses GPT-4o-mini model
-  - Temperature: 0.3 (for consistent responses)
-  - Max tokens: 600 (for detailed responses)
-
-- **`alert-services.ts`**: Alert sending services
-  - Email alerts (via Nodemailer with HTML support)
-  - Dynamic email subjects
-  - Slack webhook alerts (encrypted)
-  - SMTP Configuration: Port 587 (TLS) for better reliability
-
-- **`run-monitoring.ts`**: Main monitoring execution script
-  - Checks all endpoints
-  - Saves results to database
-  - Integrates AI-generated alerts with full context
-  - Triggers alerts when needed
-
-- **`cron.ts`**: Cron job setup (for scheduled monitoring)
-  - Runs every 5 minutes (*/5 * * * *)
-  - Prevents excessive notifications
+### `src/services/run-monitoring.ts` — Per-tick orchestrator
+1. Fetch due endpoints
+2. For each: parallel DNS / SSL / HTTP / content checks
+3. Compute new `consecutiveDownCount` and `shouldAlert`
+4. Persist Log, Endpoint, Incident
+5. If DOWN + alert: dispatch DOWN notification (AI message)
+6. If UP: anomaly detection → DEGRADED notification (6h throttle)
+7. SSL expiry check → SSL_WARNING (7d throttle)
+8. 24h failure count → UNSTABLE (24h throttle)
 
 ---
 
-### 6. **src/schemas/** - Zod Validation Schemas
+## tRPC Routers
 
-Form validation and data validation schemas:
-
-- **`endpoint.schema.ts`**: Endpoint creation/update validation
-- **`project.schema.ts`**: Project creation/update validation
-
----
-
-### 7. **src/trpc/** - tRPC API Layer
-
-Type-safe API layer that connects frontend and backend:
-
-#### Structure:
-
-- **`index.ts`**: tRPC router exports
-- **`trpc.ts`**: tRPC context and middleware setup
-- **`trpc-server/`**: Server-side tRPC configuration
-- **`api/`**: API routes
-  - **`router/`**: Individual routers
-    - **`project/`**: Project CRUD operations
-    - **`endpoint/`**: Endpoint management
-    - **`log/`**: Log queries and incident management
-      - `getAllIncidentsTable`: Paginated incidents with filters/search
-      - `getEndpointsWithIncidents`: All endpoints with incident counts
-      - `getEndpointIncidentDetail`: Detailed incident info for specific endpoint
-    - **`settings/`**: User settings management
-  - **`routes.ts`**: Main router that combines all routes
+| Router | File | Procedures |
+|---|---|---|
+| `project` | `trpc/api/router/project/index.ts` | CRUD |
+| `endpoint` | `trpc/api/router/endPoint/index.ts` | CRUD + getByProject |
+| `logs` | `trpc/api/router/log/index.ts` | logs + incidents + **`analyzeIncident`** + export |
+| `dashboardAnalysis` | `trpc/api/router/dashboard-analysis/index.ts` | summary, trends, slowest, notification stats |
+| `userSetting` | `trpc/api/router/user-setting/index.ts` | settings + test notification |
+| `statusPage` | `trpc/api/router/status-page/index.ts` | CRUD + `getBySlug` (public) |
 
 ---
 
-### 8. **src/types/** - TypeScript Types
+## Cron Architecture
 
-Global TypeScript type definitions and interfaces
+**Production:** Vercel Cron → GET `/api/cron/run` with `Authorization: Bearer ${CRON_SECRET}` → `runEndpointMonitoring()`. Schedule in `vercel.json`.
 
----
-
-### 9. **prisma/** - Database Schema
-
-#### Files:
-
-- **`schema.prisma`**: **IMPORTANT - Database Schema**
-
-  **Models:**
-
-  1. **User**: Users (Google/GitHub login)
-  2. **Session**: User sessions
-  3. **Account**: OAuth accounts
-  4. **Verification**: Email verification
-  5. **Project**: Monitoring projects
-  6. **Endpoint**: URLs to monitor
-     - `checkInterval`: How often to check (in hours)
-     - `nextCheckAt`: When the next check should occur
-     - `lastStatus`: Status from the last check
-  7. **Setting**: User notification settings
-     - Email
-     - Slack webhook (encrypted)
-     - WhatsApp (future feature)
-  8. **Log**: Monitoring logs
-     - Status, HTTP code, response time
-     - DNS status, IP address
-     - SSL validity and expiry
-     - Content hash and length
-  9. **Notification**: Record of sent alerts
-  10. **Incident**: Incident tracking (NEW)
-     - Groups consecutive DOWN logs
-     - Tracks startedAt, recoveredAt, duration
-     - Status: ongoing/resolved
-     - Links to endpoint and trigger log
-
-  **Enums:**
-  - `HTTPStatus`: UP, DOWN, REDIRECT, CLIENT_ERROR, UNKNOWN
-  - `DNSStatus`: RESOLVED, FAILED
-  - `AlertStatus`: SEND, FAIL
-
-- **`generated/prisma/`**: Auto-generated Prisma client
+**Dev:** `pnpm cron` runs `src/services/cron.ts` (in-process node-cron, every 5 min). Warns if NODE_ENV=production.
 
 ---
 
-## 🤖 AI Agent Integration
+## Tests
 
-### OpenAI Service (`src/services/openAI.ts`)
-
-This file contains the main AI agent logic:
-
-**Purpose**: Generate human-friendly alert messages when a website goes down
-
-**Function**: `generateAlert(input: WebsiteStatus)`
-
-**Input Schema**:
-```typescript
-{
-  status: "UP" | "DOWN"
-  httpCode: number | null
-  responseTime: number | null
-  errorMessage: string | null
-  dnsStatus: string
-  ip: string | null // Can be null when DNS fails
-  sslValid: boolean
-  sslExpiry: string | null
-  checkedAt: string
-  contentHash: string | null // Can be null when request fails
-  contentLength: number | null
-  userName: string // User context
-  projectName: string // Project context
-  endpointName: string // Endpoint context
-  endpointUrl: string // URL being monitored
-}
+```bash
+pnpm test           # one-shot
+pnpm test:watch     # watch mode
 ```
 
-**AI Prompt Strategy**:
-- Professional and detailed alert message with context
-- Includes user name, project name, endpoint name
-- Key information: status, error, DNS, SSL, timestamp
-- User-friendly language with technical details
-- Actionable suggestions based on error type
-- Formatted for both email (HTML) and Slack
-
-**Output Example**:
-```
-🚨 **Website Down Alert for John Doe**
-
-**Project:** Production Monitoring
-**Endpoint:** Main Website
-**URL:** https://example.com
-
-**Issue Details:**
-- Status: DOWN
-- Error: Connection timed out
-- DNS: RESOLVED
-- IP Address: 203.0.113.10
-- SSL: Invalid / Expiry unknown
-- Checked At: 25 Feb 2026, 10:15 AM UTC
-
-**Suggestion:** The server appears to be online (DNS resolved) but not responding to requests. Check if the web server is running and firewall rules are correctly configured.
-```
+Vitest config in `vitest.config.ts` with `@/` alias resolution. 26 tests across 3 files in `test/lib/`.
 
 ---
 
-## 🔄 Monitoring Flow
+## Quick reference: where things live
 
-1. **Cron job** (`src/services/cron.ts`) triggers monitoring
-2. **MonitoringService** (`src/lib/monitoring-service.ts`) fetches endpoints to check
-3. **Log Script** (`src/lib/log-script.ts`) checks the website:
-   - DNS resolution
-   - SSL certificate validation
-   - HTTP status check
-   - Content hash/length
-4. Results are saved to the database (**Log model**)
-5. If status is DOWN:
-   - **AI Agent** (`generateAlert()`) generates a professional message
-   - **Alert Services** send email/Slack alerts
-   - Record is saved to **Notification model**
-
----
-
-## 🔐 Environment Variables
-
-The `.env` file contains these variables:
-
-- `DATABASE_URL`: PostgreSQL connection string (Neon database)
-- `BETTER_AUTH_SECRET`: Authentication secret key
-- `BETTER_AUTH_URL`: Authentication callback URL
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: Google OAuth credentials
-- `SMTP_USER` / `SMTP_PASS`: Email sending credentials
-- `ENCRYPTION_KEY`: Slack webhook encryption key
-- `OPENAI_API_KEY`: OpenAI API key for AI alerts
-
-**⚠️ Security Note**: Never commit these credentials to git!
-
----
-
-## 🚀 Scripts
-
-- `pnpm dev`: Start development server
-- `pnpm build`: Create production build
-- `pnpm start`: Start production server
-- `pnpm db:push`: Push Prisma schema to database
-- `pnpm db:generate`: Generate Prisma client
-- `pnpm add:ui`: Add Shadcn UI components
-- `pnpm cron`: Manually run cron job
-
----
-
-## 📦 Key Dependencies
-
-- **Next.js 16**: React framework
-- **Prisma**: ORM for PostgreSQL
-- **tRPC**: Type-safe API
-- **Better Auth**: Authentication (Google/GitHub)
-- **OpenAI**: AI alert generation
-- **Shadcn UI**: UI components
-- **Zod**: Schema validation
-- **Nodemailer**: Email sending
-- **Axios**: HTTP requests
-
----
-
-## 🎯 Main Features
-
-1. ✅ Multi-project monitoring
-2. ✅ URL/endpoint tracking
-3. ✅ Scheduled checks (cron-based every 5 minutes)
-4. ✅ DNS, SSL, HTTP monitoring
-5. ✅ AI-generated detailed alerts (OpenAI GPT-4o-mini)
-6. ✅ Email (HTML) & Slack notifications
-7. ✅ Real-time logs
-8. ✅ Google/GitHub OAuth
-9. ✅ Encrypted webhook storage
-10. ✅ Incident tracking and management (NEW)
-11. ✅ Incident table with filters, search, pagination
-12. ✅ Detailed incident pages with activity logs
-
----
-
-## 📝 Quick Reference for AI Agents
-
-### What's Where:
-
-| Feature | Location |
-|---------|----------|
-| AI Alert Generation | `src/services/openAI.ts` |
-| Database Schema | `prisma/schema.prisma` |
-| Monitoring Logic | `src/lib/monitoring-service.ts` |
-| Website Check Script | `src/lib/log-script.ts` |
-| Alert Sending | `src/services/alert-services.ts` |
-| Cron Job Setup | `src/services/cron.ts` |
-| API Routes (tRPC) | `src/trpc/api/router/` |
-| Incidents API | `src/trpc/api/router/log/index.ts` |
-| Incidents Page | `src/app/dashboard/incidents/` |
-| Authentication | `src/lib/auth.ts` |
-| Frontend Pages | `src/app/` |
-| UI Components | `src/components/` |
-| Validation Schemas | `src/schemas/` |
-
-### Common Development Tasks:
-
-- **Add new feature**: Create page in `src/app/dashboard/`, add route in `src/trpc/api/router/`
-- **Change database**: Edit `prisma/schema.prisma`, then run `pnpm db:push`
-- **Improve AI prompts**: Edit prompt in `src/services/openAI.ts`
-- **Add new alert channel**: Add function in `src/services/alert-services.ts`
-- **Create UI component**: Add to `src/components/`
-
----
-
-## 🏗️ Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Frontend (Next.js)                      │
-│  ┌────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │   Pages    │  │  Components  │  │  tRPC Client     │   │
-│  │ (src/app)  │  │             │  │                  │   │
-│  └────────────┘  └──────────────┘  └──────────────────┘   │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                    ┌─────────▼──────────┐
-                    │   tRPC API Layer   │
-                    │  (Type-safe RPC)   │
-                    └─────────┬──────────┘
-                              │
-┌─────────────────────────────▼───────────────────────────────┐
-│                    Backend Services                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐ │
-│  │  Monitoring  │  │  AI Service  │  │ Alert Services   │ │
-│  │   Service    │  │   (OpenAI)   │  │ (Email/Slack)    │ │
-│  └──────────────┘  └──────────────┘  └──────────────────┘ │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                    ┌─────────▼──────────┐
-                    │  Database (Prisma) │
-                    │    PostgreSQL      │
-                    └────────────────────┘
-```
-
----
-
-## 🔍 Data Flow Example: Website Down Alert
-
-```
-1. Cron Job triggers → run-monitoring.ts
-                         │
-2. MonitoringService fetches due endpoints from DB
-                         │
-3. log-script.ts performs checks:
-   ├─ DNS Resolution
-   ├─ SSL Certificate Check
-   ├─ HTTP Request
-   └─ Content Hash
-                         │
-4. Results saved to Log table
-                         │
-5. If DOWN → openAI.ts generateAlert()
-                         │
-6. AI generates professional message
-                         │
-7. alert-services.ts sends:
-   ├─ Email (Nodemailer)
-   └─ Slack (Webhook)
-                         │
-8. Notification record saved to DB
-```
-
----
-
-This comprehensive guide will help you and AI agents understand the project structure and implement new features efficiently!
+| Need to … | Look at |
+|---|---|
+| Add a new alert channel | `src/services/alert-services.ts` + `run-monitoring.ts` dispatch |
+| Tune anomaly threshold | `src/lib/anomaly-detector.ts` (`Z_SCORE_THRESHOLD`, `MIN_SAMPLES`) |
+| Tune anti-spam cadence | `src/services/run-monitoring.ts` (`SILENT_CHECKS_BETWEEN_ALERTS`) |
+| Tune throttle windows | `run-monitoring.ts` (top of file) |
+| Adjust AI rate limit | `src/services/openAI.ts` (`AI_CALLS_PER_HOUR`) |
+| Change cron schedule | `vercel.json` + (dev) `src/services/cron.ts` |
+| Add tRPC procedure | new router in `src/trpc/api/router/`, register in `routes.ts` |
+| Modify schema | `prisma/schema.prisma` → `pnpm db:push && pnpm db:generate` |
+| Add DB-backed test | extend `test/lib/` with a fake-prisma stub (see `anomaly-detector.test.ts` for pattern) |
