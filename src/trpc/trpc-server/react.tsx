@@ -21,7 +21,8 @@ export function TRPCReactProvider(props: {
             new QueryClient({
                 defaultOptions: {
                     queries: {
-                        refetchOnWindowFocus: true,
+                        refetchOnWindowFocus: false,
+                        staleTime: 30 * 1000,
                         retry: (failureCount, error) => {
                             if (handleErrorOnClient(error)) return false;
                             return failureCount < 3;

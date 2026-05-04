@@ -4,12 +4,7 @@ import { ZodError } from "zod";
 import { ServerSession } from "@/lib/auth-sever";
 
 export const createTRPCContext = async (opts: { headers: Headers, session: ServerSession; }) => {
-    const source = opts.headers.get("x-trpc-source") ?? "unknown";
-    const session = opts.session;
-
-    console.log(">>> tRPC Request from", source, "by", opts.session?.user?.email);
-
-    return { session, prisma };
+    return { session: opts.session, prisma };
 };
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
