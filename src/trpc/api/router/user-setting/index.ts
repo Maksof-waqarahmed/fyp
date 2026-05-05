@@ -129,30 +129,53 @@ export const userSetting = createTRPCRouter({
                 }
             });
 
-            if (input.channel === "email" && !setting?.email) {
-                throw new TRPCError({
-                    code: "BAD_REQUEST",
-                    message: "Email not configured",
-                });
-            }
-
-            if (input.channel === "slack" && !setting?.slackWebhook) {
-                throw new TRPCError({
-                    code: "BAD_REQUEST",
-                    message: "Slack webhook not configured",
-                });
-            }
-
             if (input.channel === "email") {
-                await sendEmailAlert(setting?.email || '', `Test notification sent to ${input.channel} successfully`)
+                if (!setting?.email) {
+                    throw new TRPCError({ code: "BAD_REQUEST", message: "Email not configured" });
+                }
+                const result = await sendEmailAlert(
+                    setting.email,
+                    "✅ Test notification from your Uptime Monitor — if you see this, email alerts are working.",
+                    "Uptime Monitor — test alert"
+                );
+                if (!result?.messageId) {
+                    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to send test email" });
+                }
+                return { message: `Test email sent to ${setting.email}` };
             }
 
             if (input.channel === "slack") {
-                await sendSlackAlert(input.channel || '', `Test notification sent to ${input.channel} successfully`)
+                if (!setting?.slackWebhook || !setting.slackWebhookIv || !setting.slackWebhookAuthTag) {
+                    throw new TRPCError({ code: "BAD_REQUEST", message: "Slack webhook not configured" });
+                }
+
+                let webhookUrl: string;
+                try {
+                    webhookUrl = decrypt(
+                        setting.slackWebhook,
+                        setting.slackWebhookIv,
+                        setting.slackWebhookAuthTag
+                    );
+                } catch {
+                    throw new TRPCError({
+                        code: "INTERNAL_SERVER_ERROR",
+                        message: "Could not decrypt Slack webhook. Try saving the URL again.",
+                    });
+                }
+
+                const result = await sendSlackAlert(
+                    webhookUrl,
+                    "✅ *Test notification* from your Uptime Monitor — if you see this, Slack alerts are working."
+                );
+                if (!result.success) {
+                    throw new TRPCError({
+                        code: "INTERNAL_SERVER_ERROR",
+                        message: result.lastError ?? "Slack rejected the message",
+                    });
+                }
+                return { message: "Test message sent to Slack" };
             }
 
-            return {
-                message: `Test notification sent to ${input.channel} successfully`,
-            }
+            return { message: "No channel selected" };
         })
 })

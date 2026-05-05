@@ -152,13 +152,20 @@ export async function runEndpointMonitoring() {
                             );
                             if (!recentlyNotified) {
                                 const message =
-                                    `⚠️ *Performance Degraded* — ${endpoint.name}\n` +
-                                    `URL: ${endpoint.url}\n\n` +
-                                    `Current response: *${httpResult.responseTime}ms*\n` +
-                                    `7-day baseline: ${anomaly.baseline.mean}ms ± ${anomaly.baseline.stddev}ms (n=${anomaly.baseline.sampleSize})\n` +
-                                    `Z-score: ${anomaly.zScore} (threshold: 2.0)\n\n` +
-                                    `Endpoint is technically UP but responding much slower than usual. Investigate before it escalates to a full outage.`;
-                                const subject = `⚠️ Performance degraded: ${endpoint.name}`;
+                                    `👋 Hello ${endpoint.project.user.name},\n\n` +
+                                    `⚠️ *Performance Degraded* on your project *${endpoint.project.projectName}*.\n\n` +
+                                    `🔗 *Endpoint:* ${endpoint.name}\n` +
+                                    `*URL:* ${endpoint.url}\n\n` +
+                                    `*Current response time:* ${httpResult.responseTime}ms\n` +
+                                    `*7-day baseline:* ${anomaly.baseline.mean}ms ± ${anomaly.baseline.stddev}ms (n=${anomaly.baseline.sampleSize} samples)\n` +
+                                    `*Z-score:* ${anomaly.zScore} (anomaly threshold: 2.0)\n` +
+                                    `*Checked at:* ${new Date().toLocaleString()}\n\n` +
+                                    `💡 *Suggestions:*\n` +
+                                    `- Check server CPU / memory / DB load\n` +
+                                    `- Look for recent deploys that could have changed performance\n` +
+                                    `- If this persists, expect a full outage soon\n\n` +
+                                    `Thanks for staying on top of things!\n*Your Monitoring Team*`;
+                                const subject = `⚠️ Performance degraded: ${endpoint.name} (${endpoint.project.projectName})`;
                                 await dispatch(monitoringService, endpoint, target, "DEGRADED", subject, message);
                             }
                         }
@@ -179,12 +186,23 @@ export async function runEndpointMonitoring() {
                             SSL_THROTTLE_MS
                         );
                         if (!recentlyNotified) {
+                            const dayLabel = daysToExpiry === 1 ? "day" : "days";
+                            const urgencyEmoji = daysToExpiry <= 3 ? "🚨" : daysToExpiry <= 7 ? "⚠️" : "🔒";
                             const message =
-                                `🔒 *SSL Certificate Expiring Soon* — ${endpoint.name}\n` +
-                                `URL: ${endpoint.url}\n\n` +
-                                `Expires in: *${daysToExpiry} day${daysToExpiry === 1 ? "" : "s"}* (${expiryDate.toLocaleString()})\n\n` +
-                                `Renew the certificate before expiry to avoid an outage. If using Let's Encrypt, verify the auto-renew cron is running.`;
-                            const subject = `🔒 SSL expires in ${daysToExpiry} days: ${endpoint.name}`;
+                                `👋 Hello ${endpoint.project.user.name},\n\n` +
+                                `${urgencyEmoji} *SSL Certificate Expiring Soon* on your project *${endpoint.project.projectName}*.\n\n` +
+                                `🔗 *Endpoint:* ${endpoint.name}\n` +
+                                `*URL:* ${endpoint.url}\n\n` +
+                                `*Expires in:* ${daysToExpiry} ${dayLabel}\n` +
+                                `*Expiry date:* ${expiryDate.toLocaleString()}\n` +
+                                `*Checked at:* ${new Date().toLocaleString()}\n\n` +
+                                `💡 *Suggestions:*\n` +
+                                `- Renew the certificate before it expires\n` +
+                                `- If using Let's Encrypt, verify the auto-renew cron job is running\n` +
+                                `- If the cert is managed by your hosting provider, check renewal status in their dashboard\n` +
+                                `- Test renewed cert with: \`curl -vI ${endpoint.url}\`\n\n` +
+                                `Thanks for staying on top of things!\n*Your Monitoring Team*`;
+                            const subject = `${urgencyEmoji} SSL expires in ${daysToExpiry} ${dayLabel}: ${endpoint.name} (${endpoint.project.projectName})`;
                             await dispatch(monitoringService, endpoint, target, "SSL_WARNING", subject, message);
                         }
                     }
@@ -203,11 +221,20 @@ export async function runEndpointMonitoring() {
                     );
                     if (!recentlyNotified) {
                         const message =
-                            `📉 *Endpoint Unstable* — ${endpoint.name}\n` +
-                            `URL: ${endpoint.url}\n\n` +
-                            `Last 24h: *${failures24h} non-UP checks* detected (threshold: ${UNSTABLE_FAILURE_THRESHOLD}).\n\n` +
-                            `Endpoint is flapping between UP and failure states. Investigate intermittent network issues, deploys, or backend health.`;
-                        const subject = `📉 Endpoint unstable: ${endpoint.name}`;
+                            `👋 Hello ${endpoint.project.user.name},\n\n` +
+                            `📉 *Endpoint Unstable* on your project *${endpoint.project.projectName}*.\n\n` +
+                            `🔗 *Endpoint:* ${endpoint.name}\n` +
+                            `*URL:* ${endpoint.url}\n\n` +
+                            `*Last 24 hours:* ${failures24h} non-UP checks detected (threshold: ${UNSTABLE_FAILURE_THRESHOLD})\n` +
+                            `*Pattern:* Endpoint is flapping between UP and failure states\n` +
+                            `*Checked at:* ${new Date().toLocaleString()}\n\n` +
+                            `💡 *Suggestions:*\n` +
+                            `- Check intermittent network or DNS issues\n` +
+                            `- Review recent deploys / config changes\n` +
+                            `- Verify backend health (CPU, memory, DB connection pool)\n` +
+                            `- Look at logs around the failure timestamps for patterns\n\n` +
+                            `Thanks for staying on top of things!\n*Your Monitoring Team*`;
+                        const subject = `📉 Endpoint unstable: ${endpoint.name} (${endpoint.project.projectName})`;
                         await dispatch(monitoringService, endpoint, target, "UNSTABLE", subject, message);
                     }
                 }

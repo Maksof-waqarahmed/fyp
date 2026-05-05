@@ -177,6 +177,8 @@ model Incident {
   triggerLogId  String?
   errorMessage  String?
   httpCode      Int?
+  aiAnalysis    Json?
+  aiAnalyzedAt  DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 

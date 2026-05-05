@@ -1,7 +1,7 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { analyzeIncident } from "@/services/openAI";
+import { analyzeIncident, type RootCauseAnalysis } from "@/services/openAI";
 
 export const logs = createTRPCRouter({
 
@@ -16,11 +16,11 @@ export const logs = createTRPCRouter({
                 endpointName: z.string().optional(),
                 projectName: z.string().optional(),
 
-                status: z.enum(["UP", "DOWN"]).optional(),
+                status: z.enum(["UP", "REDIRECT", "CLIENT_ERROR", "DOWN", "UNKNOWN"]).optional(),
                 dnsStatus: z.enum(["RESOLVED", "FAILED"]).optional(),
 
-                startDate: z.date().optional(),
-                endDate: z.date().optional(),
+                startDate: z.coerce.date().optional(),
+                endDate: z.coerce.date().optional(),
 
                 sslValid: z.boolean().optional(),
 
@@ -396,8 +396,10 @@ export const logs = createTRPCRouter({
             };
         }),
 
-    // GET - AI root cause analysis for the latest incident on a given endpoint
-    analyzeIncident: protectedProcedure
+    // GET - Returns the persisted AI analysis for the latest incident on this
+    // endpoint (DB-cached). No AI call. Used to render the analysis card on
+    // page load — fast and free.
+    getIncidentAnalysis: protectedProcedure
         .input(z.object({ endpointId: z.string() }))
         .query(async ({ ctx, input }) => {
             const userId = ctx.session.user.id;
@@ -408,20 +410,58 @@ export const logs = createTRPCRouter({
                     isDeleted: false,
                     project: { userId, isDeleted: false },
                 },
-                select: { id: true, name: true, url: true },
+                select: { id: true },
             });
-
-            if (!endpoint) {
-                throw new TRPCError({ code: "NOT_FOUND", message: "Endpoint not found" });
-            }
+            if (!endpoint) throw new TRPCError({ code: "NOT_FOUND", message: "Endpoint not found" });
 
             const incident = await ctx.prisma.incident.findFirst({
                 where: { endpointId: endpoint.id },
-                orderBy: [{ status: "asc" }, { startedAt: "desc" }], // ONGOING < RESOLVED alphabetically — prefers ongoing
+                orderBy: [{ status: "asc" }, { startedAt: "desc" }],
+                select: {
+                    id: true,
+                    status: true,
+                    aiAnalysis: true,
+                    aiAnalyzedAt: true,
+                },
             });
 
             if (!incident) {
-                return { analysis: null, hasIncident: false as const };
+                return { hasIncident: false as const, analysis: null, analyzedAt: null, incidentId: null };
+            }
+
+            return {
+                hasIncident: true as const,
+                analysis: incident.aiAnalysis as RootCauseAnalysis | null,
+                analyzedAt: incident.aiAnalyzedAt?.toISOString() ?? null,
+                incidentId: incident.id,
+                incidentStatus: incident.status === "ONGOING" ? "ongoing" : "resolved",
+            };
+        }),
+
+    // POST - Run a fresh AI analysis on the latest incident, persist it to DB.
+    // Costs an OpenAI call + counts against the user's hourly rate limit.
+    regenerateIncidentAnalysis: protectedProcedure
+        .input(z.object({ endpointId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.session.user.id;
+
+            const endpoint = await ctx.prisma.endpoint.findFirst({
+                where: {
+                    id: input.endpointId,
+                    isDeleted: false,
+                    project: { userId, isDeleted: false },
+                },
+                select: { id: true, name: true, url: true },
+            });
+            if (!endpoint) throw new TRPCError({ code: "NOT_FOUND", message: "Endpoint not found" });
+
+            const incident = await ctx.prisma.incident.findFirst({
+                where: { endpointId: endpoint.id },
+                orderBy: [{ status: "asc" }, { startedAt: "desc" }],
+            });
+
+            if (!incident) {
+                return { hasIncident: false as const, analysis: null };
             }
 
             const recentLogs = await ctx.prisma.log.findMany({
@@ -451,11 +491,7 @@ export const logs = createTRPCRouter({
                 },
                 orderBy: { startedAt: "desc" },
                 take: 5,
-                select: {
-                    startedAt: true,
-                    downtimeMs: true,
-                    errorMessage: true,
-                },
+                select: { startedAt: true, downtimeMs: true, errorMessage: true },
             });
 
             const analysis = await analyzeIncident(
@@ -491,11 +527,21 @@ export const logs = createTRPCRouter({
                 { incidentId: incident.id, userId, prisma: ctx.prisma }
             );
 
+            // Persist if AI returned something so it survives navigation/restarts
+            if (analysis) {
+                await ctx.prisma.incident.update({
+                    where: { id: incident.id },
+                    data: {
+                        aiAnalysis: analysis as any,
+                        aiAnalyzedAt: new Date(),
+                    },
+                });
+            }
+
             return {
-                analysis,
                 hasIncident: true as const,
+                analysis,
                 incidentId: incident.id,
-                incidentStatus: incident.status === "ONGOING" ? "ongoing" : "resolved",
             };
         }),
 
@@ -621,39 +667,45 @@ export const logs = createTRPCRouter({
         z.object({
             endpointId: z.string().optional(),
             projectId: z.string().optional(),
-            startDate: z.date().optional(),
-            endDate: z.date().optional(),
+            projectName: z.string().optional(),
+            endpointName: z.string().optional(),
+            dnsStatus: z.enum(["RESOLVED", "FAILED"]).optional(),
+            sslValid: z.boolean().optional(),
+            startDate: z.coerce.date().optional(),
+            endDate: z.coerce.date().optional(),
             status: z.enum(["UP", "REDIRECT", "CLIENT_ERROR", "DOWN", "UNKNOWN"]).optional(),
-            limit: z.number().int().min(1).max(10000).default(1000),
+            limit: z.number().int().min(1).max(10000).default(10000),
         }).optional()
-    ).query(async ({ ctx, input }) => {
-        const whereClause: any = {
-            endpoint: { project: { userId: ctx.session.user.id } },
+    ).mutation(async ({ ctx, input }) => {
+        const userId = ctx.session.user.id;
+        const endpointFilter: any = {
+            project: { userId, isDeleted: false },
+            isDeleted: false,
         };
 
-        if (input?.endpointId) {
-            whereClause.endpointId = input.endpointId;
+        if (input?.endpointId) endpointFilter.id = input.endpointId;
+        if (input?.endpointName) {
+            endpointFilter.name = { contains: input.endpointName, mode: "insensitive" };
         }
-
-        if (input?.projectId) {
-            whereClause.endpoint = {
-                ...whereClause.endpoint,
-                projectId: input.projectId,
+        if (input?.projectId) endpointFilter.projectId = input.projectId;
+        if (input?.projectName) {
+            endpointFilter.project = {
+                userId,
+                isDeleted: false,
+                projectName: { contains: input.projectName, mode: "insensitive" },
             };
         }
 
-        if (input?.status) {
-            whereClause.status = input.status;
-        }
+        const whereClause: any = { endpoint: endpointFilter };
+
+        if (input?.status) whereClause.status = input.status;
+        if (input?.dnsStatus) whereClause.dnsStatus = input.dnsStatus;
+        if (input?.sslValid !== undefined) whereClause.sslValid = input.sslValid;
 
         if (input?.startDate || input?.endDate) {
             whereClause.checkedAt = {};
-            if (input.startDate) {
-                whereClause.checkedAt.gte = input.startDate;
-            }
-            if (input.endDate) {
-                whereClause.checkedAt.lte = input.endDate;
-            }
+            if (input.startDate) whereClause.checkedAt.gte = input.startDate;
+            if (input.endDate) whereClause.checkedAt.lte = input.endDate;
         }
 
         const logs = await ctx.prisma.log.findMany({

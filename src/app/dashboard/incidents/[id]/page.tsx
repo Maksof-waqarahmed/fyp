@@ -19,7 +19,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { useState } from "react"
+import { toast } from "sonner"
+import { Download } from "lucide-react"
 
 interface IncidentLog {
     id: string
@@ -104,13 +105,61 @@ interface IncidentDetailViewProps {
 }
 
 function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId, isDown }: IncidentDetailViewProps) {
-    const [analysisRequested, setAnalysisRequested] = useState(false)
+    const utils = api.useUtils()
 
-    const { data: aiData, isFetching: isAnalyzing, refetch: refetchAnalysis } =
-        api.logs.analyzeIncident.useQuery(
-            { endpointId },
-            { enabled: analysisRequested, staleTime: 60 * 60 * 1000 }
-        )
+    // Auto-loads any DB-cached analysis on mount — no AI call, just a SELECT.
+    const { data: aiData } = api.logs.getIncidentAnalysis.useQuery(
+        { endpointId },
+        { staleTime: 5 * 60 * 1000 }
+    )
+
+    const regenerateMut = api.logs.regenerateIncidentAnalysis.useMutation({
+        onSuccess: () => {
+            utils.logs.getIncidentAnalysis.invalidate({ endpointId })
+        },
+    })
+
+    const isAnalyzing = regenerateMut.isPending
+    const analysis = aiData?.analysis ?? regenerateMut.data?.analysis ?? null
+    const analyzedAt = aiData?.analyzedAt ?? null
+    const hasAnalysis = analysis !== null
+
+    // CSV export — downloads the last 1000 logs for this endpoint
+    const exportMut = api.logs.exportLogs.useMutation({
+        onSuccess: (res) => {
+            const rows = res.data
+            if (rows.length === 0) {
+                toast.info("No logs to export for this endpoint yet.")
+                return
+            }
+
+            const headers = Object.keys(rows[0]) as (keyof typeof rows[0])[]
+
+            const escape = (v: unknown) => {
+                if (v === null || v === undefined) return ""
+                const s = String(v)
+                return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+            }
+
+            const csv = [
+                headers.join(","),
+                ...rows.map((row) => headers.map((h) => escape(row[h])).join(",")),
+            ].join("\r\n")
+
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement("a")
+            link.href = url
+            link.download = `${endpoint.name.replace(/[^a-z0-9]+/gi, "_")}_logs_${new Date().toISOString().slice(0, 10)}.csv`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+
+            toast.success(`Exported ${rows.length} log row${rows.length === 1 ? "" : "s"}`)
+        },
+        onError: (e) => toast.error(e.message || "Failed to export"),
+    })
 
     const categoryStyle = (cat: string) => {
         switch (cat) {
@@ -165,9 +214,18 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                         </a>
                     </div>
                 </div>
-                <Button variant="outline" size="sm">
-                    <Activity className="h-4 w-4 mr-2" />
-                    Download Report
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportMut.mutate({ endpointId, limit: 1000 })}
+                    disabled={exportMut.isPending}
+                >
+                    {exportMut.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                    )}
+                    {exportMut.isPending ? "Generating…" : "Download Report"}
                 </Button>
             </div>
 
@@ -281,24 +339,25 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                                 <div>
                                     <h3 className="text-lg font-bold">AI Root Cause Analysis</h3>
                                     <p className="text-xs text-muted-foreground">
-                                        Powered by GPT-4o-mini · Cached for 1 hour
+                                        Powered by GPT-4o-mini
+                                        {analyzedAt && ` · last analyzed ${new Date(analyzedAt).toLocaleString()}`}
                                     </p>
                                 </div>
                             </div>
-                            {!analysisRequested && (
+                            {!hasAnalysis && !isAnalyzing && (
                                 <Button
-                                    onClick={() => setAnalysisRequested(true)}
+                                    onClick={() => regenerateMut.mutate({ endpointId })}
                                     className="bg-gradient-to-br from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0"
                                 >
                                     <Wand2 className="h-4 w-4 mr-2" />
                                     Analyze with AI
                                 </Button>
                             )}
-                            {analysisRequested && !isAnalyzing && (
+                            {hasAnalysis && !isAnalyzing && (
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => refetchAnalysis()}
+                                    onClick={() => regenerateMut.mutate({ endpointId })}
                                 >
                                     <Wand2 className="h-3 w-3 mr-1" />
                                     Re-analyze
@@ -306,43 +365,43 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                             )}
                         </div>
 
-                        {!analysisRequested && (
+                        {!hasAnalysis && !isAnalyzing && (
                             <div className="text-center py-8 text-muted-foreground">
                                 <Sparkles className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                                <p className="text-sm">Click <span className="font-semibold">Analyze with AI</span> to get a structured root-cause diagnosis based on the recent logs and similar past incidents.</p>
+                                <p className="text-sm">Click <span className="font-semibold">Analyze with AI</span> to get a structured root-cause diagnosis based on the recent logs and similar past incidents. The result is saved permanently for this incident.</p>
                             </div>
                         )}
 
-                        {analysisRequested && isAnalyzing && (
+                        {isAnalyzing && (
                             <div className="text-center py-8">
                                 <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500 mb-2" />
                                 <p className="text-sm text-muted-foreground">Analyzing incident…</p>
                             </div>
                         )}
 
-                        {analysisRequested && !isAnalyzing && aiData && !aiData.analysis && (
-                            <div className="text-center py-6 text-sm text-muted-foreground bg-slate-50 rounded-lg">
-                                Analysis unavailable — AI rate limit reached or service temporarily down. Try again in a few minutes.
+                        {regenerateMut.isError && !isAnalyzing && (
+                            <div className="text-center py-6 text-sm text-red-600 bg-red-50 rounded-lg">
+                                {regenerateMut.error.message || "Analysis failed. Try again in a moment."}
                             </div>
                         )}
 
-                        {analysisRequested && !isAnalyzing && aiData?.analysis && (
+                        {hasAnalysis && !isAnalyzing && analysis && (
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <Badge variant="outline" className={categoryStyle(aiData.analysis.category)}>
-                                        {aiData.analysis.category}
+                                    <Badge variant="outline" className={categoryStyle(analysis.category)}>
+                                        {analysis.category}
                                     </Badge>
-                                    <Badge variant="outline" className={confidenceStyle(aiData.analysis.confidence)}>
-                                        {aiData.analysis.confidence} confidence
+                                    <Badge variant="outline" className={confidenceStyle(analysis.confidence)}>
+                                        {analysis.confidence} confidence
                                     </Badge>
                                 </div>
 
                                 <div>
                                     <p className="text-base font-semibold text-gray-900">
-                                        {aiData.analysis.summary}
+                                        {analysis.summary}
                                     </p>
                                     <p className="text-sm text-muted-foreground mt-1">
-                                        {aiData.analysis.likelyCause}
+                                        {analysis.likelyCause}
                                     </p>
                                 </div>
 
@@ -351,7 +410,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                                         Recommended Actions
                                     </h4>
                                     <ol className="space-y-2 text-sm">
-                                        {aiData.analysis.recommendedActions.map((action, i) => (
+                                        {analysis.recommendedActions.map((action: string, i: number) => (
                                             <li key={i} className="flex gap-3">
                                                 <span className="shrink-0 h-5 w-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
                                                     {i + 1}
