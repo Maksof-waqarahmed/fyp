@@ -5,7 +5,8 @@ import "./globals.css"
 import { TRPCReactProvider } from "@/trpc/trpc-server/react"
 import { headers } from "next/headers"
 import { cache } from "react"
-import { Toaster } from "sonner"
+import { Toaster } from "@/components/ui/sonner"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -41,12 +42,19 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
-        <TRPCReactProvider headersPromise={getHeaders()}>
-          {children}
-        </TRPCReactProvider>
-        <Toaster richColors theme="system" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <TRPCReactProvider headersPromise={getHeaders()}>
+            {children}
+          </TRPCReactProvider>
+          <Toaster richColors />
+        </ThemeProvider>
       </body>
     </html>
   )
