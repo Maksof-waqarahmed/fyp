@@ -13,9 +13,12 @@ import {
     ExternalLink,
     Globe,
     Loader2,
+    RefreshCw,
     Server,
+    ShieldAlert,
     Sparkles,
-    Wand2
+    Wand2,
+    Zap,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -47,6 +50,203 @@ function formatDuration(startDate: string, endDate?: string): string {
     if (minutes > 0) return `${minutes}m ${seconds}s`
     return `${seconds}s`
 }
+
+// ── Incident Timeline ────────────────────────────────────────────────────────
+
+interface TimelineEvent {
+    id: string
+    icon: React.ReactNode
+    dotColor: string
+    title: string
+    subtitle?: string
+    badge?: { label: string; className: string }
+    time?: string
+    isLast?: boolean
+    isPulse?: boolean
+}
+
+interface IncidentTimelineProps {
+    currentIncident: {
+        status: string
+        startedAt: string
+        recoveredAt: string | null
+        errorMessage: string | null
+        httpCode: number | null
+        triggerStatus: string
+    }
+    activityLog: IncidentLog[]
+    analysis: {
+        category: string
+        confidence: string
+        summary: string
+        likelyCause: string
+        recommendedActions: string[]
+    } | null
+}
+
+function TimelineRow({ event }: { event: TimelineEvent }) {
+    return (
+        <div className="flex gap-4">
+            {/* Dot + line */}
+            <div className="flex flex-col items-center">
+                <div
+                    className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 z-10 ${event.dotColor}`}
+                >
+                    {event.isPulse && (
+                        <span className="absolute h-9 w-9 rounded-full animate-ping opacity-30 bg-red-500" />
+                    )}
+                    {event.icon}
+                </div>
+                {!event.isLast && (
+                    <div className="w-px flex-1 mt-1 mb-1 border-l-2 border-dashed border-border" />
+                )}
+            </div>
+
+            {/* Content */}
+            <div className={`pb-6 flex-1 min-w-0 ${event.isLast ? "" : ""}`}>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="text-sm font-semibold">{event.title}</p>
+                    {event.badge && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${event.badge.className}`}>
+                            {event.badge.label}
+                        </span>
+                    )}
+                </div>
+                {event.subtitle && (
+                    <p className="text-xs text-muted-foreground leading-relaxed">{event.subtitle}</p>
+                )}
+                {event.time && (
+                    <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(event.time).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                        })}
+                    </p>
+                )}
+            </div>
+        </div>
+    )
+}
+
+function IncidentTimeline({ currentIncident, activityLog, analysis }: IncidentTimelineProps) {
+    const isResolved = currentIncident.status !== "ongoing"
+
+    // Sorted logs ascending (oldest → newest)
+    const sortedLogs = [...activityLog].sort(
+        (a, b) => new Date(a.checkedAt).getTime() - new Date(b.checkedAt).getTime()
+    )
+
+    // Count consecutive DOWN checks
+    const downLogs = sortedLogs.filter(
+        (l) => l.status === "DOWN" || l.status === "CLIENT_ERROR" || l.status === "UNKNOWN"
+    )
+
+    // First UP log after the incident started (recovery check)
+    const recoveryLog = sortedLogs.find(
+        (l) =>
+            l.status === "UP" &&
+            new Date(l.checkedAt) > new Date(currentIncident.startedAt)
+    )
+
+    const events: TimelineEvent[] = []
+
+    // 1 — Downtime started
+    events.push({
+        id: "start",
+        dotColor: "bg-red-100 border-2 border-red-300 relative",
+        isPulse: !isResolved,
+        icon: <ShieldAlert className="h-4 w-4 text-red-600" />,
+        title: "Endpoint went DOWN",
+        subtitle: currentIncident.errorMessage ?? "Connection failed",
+        badge: currentIncident.httpCode
+            ? { label: `HTTP ${currentIncident.httpCode}`, className: "bg-red-50 text-red-700 border-red-200" }
+            : undefined,
+        time: currentIncident.startedAt,
+    })
+
+    // 2 — Consecutive failures summary (if more than 1 DOWN log)
+    if (downLogs.length > 1) {
+        events.push({
+            id: "checks",
+            dotColor: "bg-orange-100 border-2 border-orange-300",
+            icon: <RefreshCw className="h-4 w-4 text-orange-600" />,
+            title: `${downLogs.length} monitor checks failed`,
+            subtitle: `Monitoring continued detecting the failure every check interval.`,
+        })
+    }
+
+    // 3 — AI Analysis (if available)
+    if (analysis) {
+        events.push({
+            id: "ai",
+            dotColor: "bg-indigo-100 border-2 border-indigo-300",
+            icon: <Sparkles className="h-4 w-4 text-indigo-600" />,
+            title: "AI Root Cause Analysis completed",
+            subtitle: analysis.summary,
+            badge: {
+                label: `${analysis.category} · ${analysis.confidence} confidence`,
+                className: "bg-indigo-50 text-indigo-700 border-indigo-200",
+            },
+        })
+    }
+
+    // 4 — Recovery log (first UP after incident)
+    if (recoveryLog) {
+        events.push({
+            id: "recovery-check",
+            dotColor: "bg-emerald-100 border-2 border-emerald-300",
+            icon: <Zap className="h-4 w-4 text-emerald-600" />,
+            title: "First successful check after downtime",
+            subtitle: recoveryLog.responseTime
+                ? `Response time: ${recoveryLog.responseTime}ms`
+                : "Endpoint responded successfully",
+            time: recoveryLog.checkedAt,
+        })
+    }
+
+    // 5 — Final event: resolved or ongoing
+    if (isResolved && currentIncident.recoveredAt) {
+        events.push({
+            id: "resolved",
+            isLast: true,
+            dotColor: "bg-emerald-500",
+            icon: <CheckCircle2 className="h-4 w-4 text-white" />,
+            title: "Incident RESOLVED",
+            subtitle: `Total downtime: ${formatDuration(currentIncident.startedAt, currentIncident.recoveredAt)}`,
+            time: currentIncident.recoveredAt,
+        })
+    } else {
+        events.push({
+            id: "ongoing",
+            isLast: true,
+            dotColor: "bg-red-500 relative",
+            isPulse: true,
+            icon: <AlertTriangle className="h-4 w-4 text-white" />,
+            title: "Incident still ONGOING",
+            subtitle: `Running for ${formatDuration(currentIncident.startedAt)} — awaiting recovery`,
+        })
+    }
+
+    return (
+        <Card className="p-6 border-2">
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-blue-600" />
+                Incident Timeline
+            </h3>
+            <div className="pl-1">
+                {events.map((event) => (
+                    <TimelineRow key={event.id} event={event} />
+                ))}
+            </div>
+        </Card>
+    )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function IncidentDetailPage() {
     const params = useParams()
@@ -328,6 +528,13 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                             </div>
                         </Card>
                     </div>
+
+                    {/* Incident Timeline */}
+                    <IncidentTimeline
+                        currentIncident={currentIncident}
+                        activityLog={activityLog}
+                        analysis={analysis}
+                    />
 
                     {/* AI Analysis Card */}
                     <Card className="p-6 border-2 bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50">

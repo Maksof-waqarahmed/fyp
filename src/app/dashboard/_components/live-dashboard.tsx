@@ -2,19 +2,22 @@
 import { useLiveDashboard } from "@/hooks/use-live-dashboard"
 import Cards from "./cards"
 import TerminalComp from "./terminal"
+import { UptimeHeatmap } from "./uptime-heatmap"
 import type { RouterOutputs } from "@/trpc"
 import type { Logs } from "@/types/logs.types"
 
 type AnalysisData = RouterOutputs["dashboardAnalysis"]["getAnalysis"]["data"]
 type EndpointHealth = RouterOutputs["dashboardAnalysis"]["getEndpointHealthSummary"]["data"]
+type TrendDay = RouterOutputs["dashboardAnalysis"]["getUptimeTrends"]["data"][number]
 
 interface LiveDashboardProps {
     analysis: AnalysisData
     recentLogs: Logs[]
     endpointHealth: EndpointHealth
+    uptimeTrends: TrendDay[]
 }
 
-export function LiveDashboard({ analysis, recentLogs, endpointHealth }: LiveDashboardProps) {
+export function LiveDashboard({ analysis, recentLogs, endpointHealth, uptimeTrends }: LiveDashboardProps) {
     const live = useLiveDashboard(recentLogs)
 
     // Overlay live lastStatus onto the SSR endpoint health list
@@ -46,6 +49,9 @@ export function LiveDashboard({ analysis, recentLogs, endpointHealth }: LiveDash
                 isLive={live.connected}
                 lastUpdated={live.lastUpdated}
             />
+
+            <UptimeHeatmap trends={uptimeTrends} days={90} />
+
             <div className="h-[500px]">
                 <TerminalComp
                     data={live.recentLogs}
