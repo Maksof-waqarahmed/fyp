@@ -7,7 +7,8 @@ import {
   Settings2,
   SquareTerminal,
   ArrowDownNarrowWide,
-  FileChartLine
+  FileChartLine,
+  Sparkles,
 } from "lucide-react"
 import * as React from "react"
 
@@ -63,6 +64,11 @@ const data = {
       title: "Status Pages",
       url: "/dashboard/status-pages",
       icon: FileChartLine,
+    },
+    {
+      title: "AI Assistant",
+      url: "/dashboard/ai-assistant",
+      icon: Sparkles,
     },
     {
       title: "User Settings",

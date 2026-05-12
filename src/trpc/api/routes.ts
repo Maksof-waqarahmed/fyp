@@ -5,6 +5,7 @@ import { logs } from "./router/log";
 import { project } from "./router/project";
 import { userSetting } from "./router/user-setting";
 import { statusPage } from "./router/status-page";
+import { chat } from "./router/chat";
 
 export const appRouter = createTRPCRouter({
     project,
@@ -13,6 +14,7 @@ export const appRouter = createTRPCRouter({
     userSetting,
     logs,
     statusPage,
+    chat,
 })
 
 export type AppRouter = typeof appRouter;

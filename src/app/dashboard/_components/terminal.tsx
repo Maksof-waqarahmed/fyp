@@ -4,9 +4,11 @@ import { Terminal } from 'lucide-react'
 
 interface TerminalProps {
     data: Logs[]
+    isLive?: boolean
+    newLogIds?: Set<string>
 }
 
-const TerminalComp = ({ data }: TerminalProps) => {
+const TerminalComp = ({ data, isLive, newLogIds }: TerminalProps) => {
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -37,6 +39,12 @@ const TerminalComp = ({ data }: TerminalProps) => {
                     </div>
                     <Terminal className="h-4 w-4 ml-1" />
                     <span>live logs</span>
+                    {isLive && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-full">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+                            LIVE
+                        </span>
+                    )}
                     {data.length > 0 && (
                         <span className="ml-auto text-[10px] text-zinc-500 font-normal">
                             {data.length} entries
@@ -56,7 +64,11 @@ const TerminalComp = ({ data }: TerminalProps) => {
                     ) : data.map((log) => (
                         <div
                             key={log.id}
-                            className="group py-1.5 px-2 rounded-lg hover:bg-zinc-900 transition-colors border border-transparent hover:border-zinc-800"
+                            className={`group py-1.5 px-2 rounded-lg transition-colors border ${
+                                newLogIds?.has(log.id)
+                                    ? 'bg-emerald-950/40 border-emerald-800/50'
+                                    : 'border-transparent hover:bg-zinc-900 hover:border-zinc-800'
+                            }`}
                         >
                             {/* Line 1: timestamp + status + code + response time */}
                             <div className="flex items-center gap-2 flex-wrap">
