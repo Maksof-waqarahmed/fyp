@@ -29,9 +29,9 @@ interface DeleteModalProps {
 function DeleteModal({ title, onConfirm, onCancel, isDeleting }: DeleteModalProps) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border w-full max-w-sm p-6">
+            <div className="bg-card rounded-2xl shadow-2xl border w-full max-w-sm p-6">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                    <div className="h-10 w-10 rounded-xl bg-red-50 dark:bg-red-950/30 flex items-center justify-center shrink-0">
                         <AlertTriangle className="h-5 w-5 text-red-500" />
                     </div>
                     <div>
@@ -172,7 +172,7 @@ export function StatusPagesList({ initialPages, projects }: Props) {
                                     {page.visibility === "PUBLIC" ? (
                                         <Badge variant="secondary" className="text-[10px] shrink-0">Public</Badge>
                                     ) : (
-                                        <Badge className="text-[10px] shrink-0 bg-amber-100 text-amber-700 border-amber-200">
+                                        <Badge className="text-[10px] shrink-0 bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
                                             <Lock className="h-2.5 w-2.5 mr-0.5" /> Password
                                         </Badge>
                                     )}
@@ -185,9 +185,9 @@ export function StatusPagesList({ initialPages, projects }: Props) {
                                     </span>
                                 </div>
 
-                                <div className="flex items-center gap-1.5 bg-indigo-50/80 border border-indigo-100 rounded-lg px-3 py-2 mb-3">
-                                    <Code className="h-3 w-3 text-indigo-600 shrink-0" />
-                                    <span className="text-xs text-indigo-700 font-mono truncate flex-1">
+                                <div className="flex items-center gap-1.5 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-800 rounded-lg px-3 py-2 mb-3">
+                                    <Code className="h-3 w-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                    <span className="text-xs text-indigo-700 dark:text-indigo-300 font-mono truncate flex-1">
                                         embed: {page.embedKey.slice(0, 14)}…
                                     </span>
                                 </div>

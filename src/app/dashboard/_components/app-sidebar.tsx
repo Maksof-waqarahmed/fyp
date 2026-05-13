@@ -85,20 +85,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="bg-zinc-950">
+      <SidebarHeader>
         <Logo />
       </SidebarHeader>
-      <SidebarContent className="bg-zinc-950">
-        <div className=" h-full">
-          <div className="absolute top-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"></div>
+      <SidebarContent>
+        <div className="h-full">
+          <div className="absolute top-20 w-96 h-96 dark:bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <NavMain items={data.navMain} />
         </div>
       </SidebarContent>
-      <SidebarFooter className="bg-zinc-950">
-        {
-          session &&
-          <NavUser user={currentUser} />
-        }
+      <SidebarFooter>
+        {session && <NavUser user={currentUser} />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

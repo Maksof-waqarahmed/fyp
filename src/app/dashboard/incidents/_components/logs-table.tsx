@@ -29,24 +29,24 @@ interface LogsTableProps {
 const getStatusColor = (status: string) => {
     switch (status) {
         case "UP":
-            return "bg-green-100 text-green-800 border-green-200"
+            return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
         case "DOWN":
-            return "bg-red-100 text-red-800 border-red-200"
+            return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
         case "REDIRECT":
-            return "bg-blue-100 text-blue-800 border-blue-200"
+            return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
         case "CLIENT_ERROR":
-            return "bg-yellow-100 text-yellow-800 border-yellow-200"
+            return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"
         default:
-            return "bg-gray-100 text-gray-800 border-gray-200"
+            return "bg-muted text-muted-foreground border-border"
     }
 }
 
 const getHttpColor = (code: number | null) => {
-    if (!code) return "text-gray-500"
-    if (code >= 200 && code < 300) return "text-green-600"
-    if (code >= 400 && code < 500) return "text-yellow-600"
-    if (code >= 500) return "text-red-600"
-    return "text-gray-600"
+    if (!code) return "text-muted-foreground"
+    if (code >= 200 && code < 300) return "text-green-600 dark:text-green-400"
+    if (code >= 400 && code < 500) return "text-yellow-600 dark:text-yellow-400"
+    if (code >= 500) return "text-red-600 dark:text-red-400"
+    return "text-muted-foreground"
 }
 
 type StatusFilter = "UP" | "DOWN" | "REDIRECT" | "CLIENT_ERROR" | "UNKNOWN" | "all"
@@ -256,7 +256,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
             if (chip.tone === "warning") return `${base} bg-amber-500 text-white border-amber-500`
             return `${base} bg-zinc-900 text-white border-zinc-900`
         }
-        return `${base} bg-white text-muted-foreground border-zinc-200 hover:bg-muted`
+        return `${base} bg-background text-muted-foreground border-border hover:bg-muted`
     }
 
     return (
@@ -278,7 +278,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                     <button
                         type="button"
                         onClick={handleReset}
-                        className="px-3 py-1 rounded-full text-xs font-medium border border-zinc-200 bg-white text-muted-foreground hover:bg-muted"
+                        className="px-3 py-1 rounded-full text-xs font-medium border border-border bg-background text-muted-foreground hover:bg-muted"
                     >
                         ✕ Clear
                     </button>
@@ -286,11 +286,11 @@ export default function LogsTable({ initialData }: LogsTableProps) {
             </div>
 
             {/* Filters Card */}
-            <Card className="bg-white border shadow-sm">
+            <Card className="bg-card border shadow-sm">
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                         <div className="flex flex-col gap-1.5">
-                            <Label className="text-xs font-medium text-gray-700">Project Name</Label>
+                            <Label className="text-xs font-medium text-muted-foreground">Project Name</Label>
                             <Input
                                 placeholder="Search project..."
                                 value={projectSearch}
@@ -300,7 +300,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <Label className="text-xs font-medium text-gray-700">Endpoint Name</Label>
+                            <Label className="text-xs font-medium text-muted-foreground">Endpoint Name</Label>
                             <Input
                                 placeholder="Search endpoint..."
                                 value={endpointSearch}
@@ -310,7 +310,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <Label className="text-xs font-medium text-gray-700">DNS Status</Label>
+                            <Label className="text-xs font-medium text-muted-foreground">DNS Status</Label>
                             <Select value={dnsFilter} onValueChange={(value) => setDnsFilter(value as DnsFilter)}>
                                 <SelectTrigger className="h-9 text-sm w-full">
                                     <SelectValue placeholder="Select DNS status" />
@@ -324,7 +324,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <Label className="text-xs font-medium text-gray-700">Status</Label>
+                            <Label className="text-xs font-medium text-muted-foreground">Status</Label>
                             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
                                 <SelectTrigger className="h-9 text-sm w-full">
                                     <SelectValue placeholder="Select status" />
@@ -341,7 +341,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <Label className="text-xs font-medium text-gray-700">Start Date</Label>
+                            <Label className="text-xs font-medium text-muted-foreground">Start Date</Label>
                             <Input
                                 type="date"
                                 value={startDate}
@@ -351,7 +351,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <Label className="text-xs font-medium text-gray-700">End Date</Label>
+                            <Label className="text-xs font-medium text-muted-foreground">End Date</Label>
                             <Input
                                 type="date"
                                 value={endDate}
@@ -396,7 +396,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                             </Button>
                             <Button
                                 onClick={handleApplyFilters}
-                                className="px-5 h-9 text-sm bg-black hover:bg-black/90"
+                                className="px-5 h-9 text-sm"
                             >
                                 Apply Filters
                             </Button>
@@ -407,7 +407,7 @@ export default function LogsTable({ initialData }: LogsTableProps) {
 
             {/* Logs Table — fixed-height area so pagination doesn't jump */}
             <div className="flex flex-col">
-                <div className="overflow-hidden rounded-sm border bg-white shadow-sm">
+                <div className="overflow-hidden rounded-sm border bg-card shadow-sm">
                     <Table className="w-full">
                         <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
                             <TableRow className="border-none hover:bg-transparent">
@@ -505,8 +505,8 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                                                 <Badge
                                                     className={
                                                         log.dnsStatus === "RESOLVED"
-                                                            ? "bg-green-100 text-green-800 border-green-200"
-                                                            : "bg-red-100 text-red-800 border-red-200"
+                                                            ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                                                            : "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
                                                     }
                                                 >
                                                     {log.dnsStatus}
@@ -516,14 +516,14 @@ export default function LogsTable({ initialData }: LogsTableProps) {
                                                 <Badge
                                                     className={
                                                         log.sslValid
-                                                            ? "bg-green-100 text-green-800 border-green-200"
-                                                            : "bg-red-100 text-red-800 border-red-200"
+                                                            ? "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                                                            : "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
                                                     }
                                                 >
                                                     {log.sslValid ? "Valid" : "Invalid"}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-sm text-gray-600 max-w-[200px] truncate">
+                                            <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                                                 {log.errorMessage ?? "—"}
                                             </TableCell>
                                         </TableRow>

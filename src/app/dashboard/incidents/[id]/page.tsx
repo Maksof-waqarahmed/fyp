@@ -363,20 +363,20 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
 
     const categoryStyle = (cat: string) => {
         switch (cat) {
-            case "NETWORK": return "bg-blue-100 text-blue-700 border-blue-200"
-            case "DNS": return "bg-amber-100 text-amber-700 border-amber-200"
-            case "SSL": return "bg-purple-100 text-purple-700 border-purple-200"
-            case "SERVER": return "bg-red-100 text-red-700 border-red-200"
-            case "APPLICATION": return "bg-orange-100 text-orange-700 border-orange-200"
-            default: return "bg-slate-100 text-slate-700 border-slate-200"
+            case "NETWORK": return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+            case "DNS": return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+            case "SSL": return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800"
+            case "SERVER": return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+            case "APPLICATION": return "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800"
+            default: return "bg-muted text-muted-foreground border-border"
         }
     }
 
     const confidenceStyle = (conf: string) => {
         switch (conf) {
-            case "HIGH": return "bg-green-100 text-green-700 border-green-200"
-            case "MEDIUM": return "bg-yellow-100 text-yellow-700 border-yellow-200"
-            default: return "bg-slate-100 text-slate-700 border-slate-200"
+            case "HIGH": return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+            case "MEDIUM": return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800"
+            default: return "bg-muted text-muted-foreground border-border"
         }
     }
 
@@ -435,7 +435,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                     {/* Top Row - 4 Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Root Cause Card */}
-                        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-2">
+                        <Card className="p-4 bg-gradient-to-br from-muted/50 to-card border-2">
                             <div className="flex items-start gap-2">
                                 <div className="p-2 bg-red-100 rounded-lg shrink-0">
                                     <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -444,7 +444,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                                         Root cause
                                     </h3>
-                                    <p className="text-sm font-bold text-gray-900 mt-1 line-clamp-2">
+                                    <p className="text-sm font-bold text-foreground mt-1 line-clamp-2">
                                         {currentIncident.errorMessage || "Unknown Error"}
                                     </p>
                                     {currentIncident.httpCode && (
@@ -457,7 +457,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                         </Card>
 
                         {/* Status Card */}
-                        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-2">
+                        <Card className="p-4 bg-gradient-to-br from-muted/50 to-card border-2">
                             <div className="flex items-start gap-2">
                                 <div className={`p-2 rounded-lg shrink-0 ${isDown ? 'bg-red-100' : 'bg-green-100'}`}>
                                     {isDown ? (
@@ -486,7 +486,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                         </Card>
 
                         {/* Duration Card */}
-                        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-2">
+                        <Card className="p-4 bg-gradient-to-br from-muted/50 to-card border-2">
                             <div className="flex items-start gap-2">
                                 <div className="p-2 bg-blue-100 rounded-lg shrink-0">
                                     <Clock className="h-4 w-4 text-blue-600" />
@@ -495,7 +495,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
                                         Duration
                                     </h3>
-                                    <p className="text-xl font-bold text-gray-900 mt-1">
+                                    <p className="text-xl font-bold text-foreground mt-1">
                                         {formatDuration(currentIncident.startedAt, currentIncident.recoveredAt || undefined)}
                                     </p>
                                 </div>
@@ -503,7 +503,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                         </Card>
 
                         {/* Request Card */}
-                        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-2">
+                        <Card className="p-4 bg-gradient-to-br from-muted/50 to-card border-2">
                             <div className="flex items-start gap-2">
                                 <div className="p-2 bg-purple-100 rounded-lg shrink-0">
                                     <Server className="h-4 w-4 text-purple-600" />
@@ -537,7 +537,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                     />
 
                     {/* AI Analysis Card */}
-                    <Card className="p-6 border-2 bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50">
+                    <Card className="p-6 border-2 bg-gradient-to-br from-indigo-50/50 via-card to-purple-50/50 dark:from-indigo-950/30 dark:via-card dark:to-purple-950/30">
                         <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg shrink-0">
@@ -604,7 +604,7 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                                 </div>
 
                                 <div>
-                                    <p className="text-base font-semibold text-gray-900">
+                                    <p className="text-base font-semibold text-foreground">
                                         {analysis.summary}
                                     </p>
                                     <p className="text-sm text-muted-foreground mt-1">
@@ -619,10 +619,10 @@ function IncidentDetailView({ endpoint, currentIncident, activityLog, endpointId
                                     <ol className="space-y-2 text-sm">
                                         {analysis.recommendedActions.map((action: string, i: number) => (
                                             <li key={i} className="flex gap-3">
-                                                <span className="shrink-0 h-5 w-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
+                                                <span className="shrink-0 h-5 w-5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 text-xs font-bold flex items-center justify-center">
                                                     {i + 1}
                                                 </span>
-                                                <span className="text-gray-800">{action}</span>
+                                                <span className="text-foreground">{action}</span>
                                             </li>
                                         ))}
                                     </ol>
