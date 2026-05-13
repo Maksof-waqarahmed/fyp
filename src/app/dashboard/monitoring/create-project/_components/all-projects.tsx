@@ -96,7 +96,7 @@ export function AllProjects({
       {/* ================= TABLE ================= */}
 
       <div className="mt-4">
-        <Table className="w-full overflow-hidden rounded-sm border bg-white shadow-sm">
+        <Table className="w-full overflow-hidden rounded-sm border bg-card shadow-sm">
           <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
             <TableRow className="border-none">
               <TableHead className="text-white font-semibold">

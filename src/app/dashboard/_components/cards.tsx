@@ -24,11 +24,13 @@ interface CardsProps {
     analysis: AnalysisData
     recentLogs: LogPoint[]
     endpointHealth: EndpointHealth
+    isLive?: boolean
+    lastUpdated?: Date | null
 }
 
 const ENDPOINT_VISIBLE_LIMIT = 8
 
-const Cards = ({ analysis, recentLogs, endpointHealth }: CardsProps) => {
+const Cards = ({ analysis, recentLogs, endpointHealth, isLive, lastUpdated }: CardsProps) => {
     const weeklyUptimeNum = parseFloat(analysis.uptime.weekly)
     const hasDown = analysis.endpoints.down > 0
     const uptimeColor = weeklyUptimeNum >= 99 ? '#10b981' : weeklyUptimeNum >= 95 ? '#f59e0b' : '#ef4444'
@@ -72,7 +74,7 @@ const Cards = ({ analysis, recentLogs, endpointHealth }: CardsProps) => {
 
                     {/* Status + uptime + KPI strip */}
                     <div className="lg:col-span-3 p-5">
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
                             <span className="relative flex h-2 w-2">
                                 <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${hasDown ? 'bg-red-400' : 'bg-emerald-400'}`} />
                                 <span className={`relative inline-flex h-2 w-2 rounded-full ${hasDown ? 'bg-red-500' : 'bg-emerald-500'}`} />
@@ -82,6 +84,17 @@ const Cards = ({ analysis, recentLogs, endpointHealth }: CardsProps) => {
                                     ? `${analysis.endpoints.down} system${analysis.endpoints.down > 1 ? 's' : ''} down — needs attention`
                                     : 'All systems operational'}
                             </span>
+                            {isLive && (
+                                <span className="ml-1 inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-full">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                    LIVE
+                                </span>
+                            )}
+                            {lastUpdated && (
+                                <span className="ml-auto text-[10px] text-muted-foreground tabular-nums">
+                                    Updated {lastUpdated.toLocaleTimeString()}
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex items-baseline gap-2.5">
