@@ -98,7 +98,7 @@ function ExpandedEndpoints({ projectId }: { projectId: string }) {
                             <TableCell className="text-muted-foreground max-w-[260px] truncate">{ep.url}</TableCell>
                             <TableCell className="text-muted-foreground">{ep.checkInterval}m</TableCell>
                             <TableCell>{statusBadge(ep.lastStatus)}</TableCell>
-                            <TableCell className="text-muted-foreground">
+                            <TableCell className="text-muted-foreground" suppressHydrationWarning>
                                 {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "Never"}
                             </TableCell>
                         </TableRow>

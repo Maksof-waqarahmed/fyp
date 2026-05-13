@@ -129,7 +129,7 @@ export const EndPointsTable = ({ endpoints }: { endpoints: Endpoint[] }) => {
                                         {endpoint.checkInterval} min
                                     </TableCell>
 
-                                    <TableCell className="text-sm text-muted-foreground">
+                                    <TableCell className="text-sm text-muted-foreground" suppressHydrationWarning>
                                         {endpoint.nextCheckAt?.toLocaleString()}
                                     </TableCell>
 
@@ -137,7 +137,7 @@ export const EndPointsTable = ({ endpoints }: { endpoints: Endpoint[] }) => {
                                         {endpoint.lastStatus}
                                     </TableCell>
 
-                                    <TableCell className="text-sm text-muted-foreground">
+                                    <TableCell className="text-sm text-muted-foreground" suppressHydrationWarning>
                                         {endpoint.lastCheckedAt?.toLocaleString()}
                                     </TableCell>
 

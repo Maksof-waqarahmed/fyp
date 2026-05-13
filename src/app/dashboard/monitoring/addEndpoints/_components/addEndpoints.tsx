@@ -127,7 +127,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Created At</p>
-                <p className="text-base font-semibold">
+                <p className="text-base font-semibold" suppressHydrationWarning>
                   {new Date(project.createdAt).toLocaleString()}
                 </p>
               </div>
@@ -141,7 +141,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Updated At</p>
-                <p className="text-base font-semibold">
+                <p className="text-base font-semibold" suppressHydrationWarning>
                   {new Date(project.updatedAt).toLocaleString()}
                 </p>
               </div>
@@ -201,7 +201,7 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
                     <TableCell className="truncate max-w-[200px]">{ep.url}</TableCell>
                     <TableCell>{ep.checkInterval} min</TableCell>
                     <TableCell>{ep.lastStatus || "-"}</TableCell>
-                    <TableCell>
+                    <TableCell suppressHydrationWarning>
                       {ep.lastCheckedAt ? new Date(ep.lastCheckedAt).toLocaleString() : "-"}
                     </TableCell>
                     <TableCell className="flex gap-2">
