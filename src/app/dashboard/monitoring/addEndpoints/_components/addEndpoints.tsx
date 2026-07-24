@@ -119,9 +119,9 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
         <CardContent className="space-y-1 md:px-6 px-3">
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
 
-            <div className="flex items-center gap-4 p-5 rounded-2xl 
-                  bg-white/5 backdrop-blur-md 
-                  border border-white/10 shadow-lg">
+            <div className="flex items-center gap-4 p-5 rounded-2xl
+                  bg-muted/40 backdrop-blur-md
+                  border shadow-lg">
               <div className="p-3 rounded-xl bg-indigo-500/20 text-indigo-400">
                 <History />
               </div>
@@ -133,9 +133,9 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 p-5 rounded-2xl 
-                  bg-white/5 backdrop-blur-md 
-                  border border-white/10 shadow-lg">
+            <div className="flex items-center gap-4 p-5 rounded-2xl
+                  bg-muted/40 backdrop-blur-md
+                  border shadow-lg">
               <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400">
                 <LoaderCircle />
               </div>
@@ -147,9 +147,9 @@ export const EndPointsForm = ({ project }: EndPointsFormProps) => {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 p-5 rounded-2xl 
-                  bg-white/5 backdrop-blur-md 
-                  border border-white/10 shadow-lg">
+            <div className="flex items-center gap-4 p-5 rounded-2xl
+                  bg-muted/40 backdrop-blur-md
+                  border shadow-lg">
               <div className="p-3 rounded-xl bg-pink-500/20 text-pink-400">
                 <Waypoints />
               </div>

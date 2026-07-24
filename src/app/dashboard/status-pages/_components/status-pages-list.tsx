@@ -29,7 +29,7 @@ interface DeleteModalProps {
 function DeleteModal({ title, onConfirm, onCancel, isDeleting }: DeleteModalProps) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border w-full max-w-sm p-6">
+            <div className="bg-card rounded-2xl shadow-2xl border w-full max-w-sm p-6">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
                         <AlertTriangle className="h-5 w-5 text-red-500" />

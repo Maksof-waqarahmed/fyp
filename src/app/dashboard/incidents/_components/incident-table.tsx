@@ -97,7 +97,7 @@ export default function IncidentTable({ initialData }: IncidentTableProps) {
 
             {/* Incidents Table */}
             <div className="mt-4">
-                <Table className="w-full overflow-hidden rounded-sm border bg-white shadow-sm">
+                <Table className="w-full overflow-hidden rounded-sm border bg-card shadow-sm">
                     <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
                         <TableRow className="border-none hover:bg-transparent">
                             <TableHead className="text-white font-semibold">Status</TableHead>
@@ -134,12 +134,12 @@ export default function IncidentTable({ initialData }: IncidentTableProps) {
                                 <TableRow key={incident.id} className="transition-colors hover:bg-muted/50">
                                     <TableCell>
                                         {incident.status === "ongoing" ? (
-                                            <Badge className="bg-red-100 text-red-800 border-red-200">
+                                            <Badge className="bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30">
                                                 <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse mr-1" />
                                                 Ongoing
                                             </Badge>
                                         ) : (
-                                            <Badge className="bg-green-100 text-green-800 border-green-200">
+                                            <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/30">
                                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                                 Resolved
                                             </Badge>
