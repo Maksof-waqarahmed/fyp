@@ -46,11 +46,11 @@ interface Endpoint {
 function statusBadge(status: HTTPStatus | null) {
     if (!status) return <Badge variant="secondary">Unknown</Badge>
     const map: Record<HTTPStatus, { label: string; className: string }> = {
-        UP: { label: "UP", className: "bg-green-100 text-green-800 border-green-200" },
-        REDIRECT: { label: "REDIRECT", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-        CLIENT_ERROR: { label: "CLIENT ERR", className: "bg-orange-100 text-orange-800 border-orange-200" },
-        DOWN: { label: "DOWN", className: "bg-red-100 text-red-800 border-red-200" },
-        UNKNOWN: { label: "UNKNOWN", className: "bg-gray-100 text-gray-700 border-gray-200" },
+        UP: { label: "UP", className: "bg-green-100 text-green-800 border-green-200 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/30" },
+        REDIRECT: { label: "REDIRECT", className: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-500/15 dark:text-yellow-400 dark:border-yellow-500/30" },
+        CLIENT_ERROR: { label: "CLIENT ERR", className: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-500/15 dark:text-orange-400 dark:border-orange-500/30" },
+        DOWN: { label: "DOWN", className: "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30" },
+        UNKNOWN: { label: "UNKNOWN", className: "bg-muted text-muted-foreground border-border" },
     }
     const { label, className } = map[status]
     return <Badge variant="outline" className={className}>{label}</Badge>
@@ -79,21 +79,21 @@ function ExpandedEndpoints({ projectId }: { projectId: string }) {
     }
 
     return (
-        <div className="px-6 pb-4 pt-2 bg-zinc-50 border-t">
+        <div className="px-6 pb-4 pt-2 bg-muted/40 border-t">
             <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Endpoints</p>
             <Table className="rounded border overflow-hidden text-sm">
-                <TableHeader className="bg-zinc-100">
+                <TableHeader className="bg-muted">
                     <TableRow className="border-none">
-                        <TableHead className="text-zinc-700 font-semibold">Name</TableHead>
-                        <TableHead className="text-zinc-700 font-semibold">URL</TableHead>
-                        <TableHead className="text-zinc-700 font-semibold">Interval (min)</TableHead>
-                        <TableHead className="text-zinc-700 font-semibold">Last Status</TableHead>
-                        <TableHead className="text-zinc-700 font-semibold">Last Checked</TableHead>
+                        <TableHead className="text-foreground font-semibold">Name</TableHead>
+                        <TableHead className="text-foreground font-semibold">URL</TableHead>
+                        <TableHead className="text-foreground font-semibold">Interval (min)</TableHead>
+                        <TableHead className="text-foreground font-semibold">Last Status</TableHead>
+                        <TableHead className="text-foreground font-semibold">Last Checked</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {endpoints.map((ep) => (
-                        <TableRow key={ep.id} className="hover:bg-zinc-100/60">
+                        <TableRow key={ep.id} className="hover:bg-muted/60">
                             <TableCell className="font-medium">{ep.name}</TableCell>
                             <TableCell className="text-muted-foreground max-w-[260px] truncate">{ep.url}</TableCell>
                             <TableCell className="text-muted-foreground">{ep.checkInterval}m</TableCell>
@@ -181,7 +181,7 @@ export function AllProjectsTable() {
             <h1 className="text-3xl font-bold tracking-tight">All Projects</h1>
 
             {/* ===== FILTER ===== */}
-            <Card className="mt-4 p-3 px-6 rounded-sm gap-2 shadow-sm border bg-white">
+            <Card className="mt-4 p-3 px-6 rounded-sm gap-2 shadow-sm border bg-card">
                 <CardTitle className="mb-2 text-lg font-semibold">Filter</CardTitle>
                 <div className="flex flex-col lg:flex-row gap-4 items-end">
                     <div className="flex flex-col w-full">
@@ -211,7 +211,7 @@ export function AllProjectsTable() {
 
             {/* ===== TABLE ===== */}
             <div className="mt-4">
-                <Table className="w-full overflow-hidden rounded-sm border bg-white shadow-sm">
+                <Table className="w-full overflow-hidden rounded-sm border bg-card shadow-sm">
                     <TableHeader className="bg-gradient-to-r from-zinc-950 from-[65%] to-blue-500/40">
                         <TableRow className="border-none">
                             <TableHead className="w-10" />

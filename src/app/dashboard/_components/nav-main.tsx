@@ -33,8 +33,8 @@ export function NavMain({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-white">Platform</SidebarGroupLabel>
-      <SidebarMenu className="text-white">
+      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarMenu>
         {items.map((item) =>
           item.items && item.items.length > 0 ? (
             <Collapsible
@@ -55,10 +55,10 @@ export function NavMain({
                   <SidebarMenuSub>
                     {item.items.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton className="hover:text-zinc-950" asChild>
+                        <SidebarMenuSubButton asChild>
                           <a href={subItem.url}>
-                            <ChartBarIncreasing className="h-3 w-3 stroke-white" />
-                            <span className="text-zinc-400 ">{subItem.title}</span>
+                            <ChartBarIncreasing className="h-3 w-3" />
+                            <span>{subItem.title}</span>
                           </a>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>

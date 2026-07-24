@@ -17,11 +17,11 @@ interface Props {
 
 const getStatusColor = (status: string) => {
     switch (status) {
-        case "UP": return "bg-green-100 text-green-800 border-green-200"
-        case "DOWN": return "bg-red-100 text-red-800 border-red-200"
-        case "REDIRECT": return "bg-blue-100 text-blue-800 border-blue-200"
-        case "CLIENT_ERROR": return "bg-yellow-100 text-yellow-800 border-yellow-200"
-        default: return "bg-gray-100 text-gray-800 border-gray-200"
+        case "UP": return "bg-green-100 text-green-800 border-green-200 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/30"
+        case "DOWN": return "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30"
+        case "REDIRECT": return "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/30"
+        case "CLIENT_ERROR": return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-500/15 dark:text-yellow-400 dark:border-yellow-500/30"
+        default: return "bg-muted text-muted-foreground border-border"
     }
 }
 
@@ -119,8 +119,8 @@ export function LogDetailDialog({ logId, onClose }: Props) {
                                             <Badge
                                                 className={
                                                     data.data.dnsStatus === "RESOLVED"
-                                                        ? "bg-green-100 text-green-800 border-green-200"
-                                                        : "bg-red-100 text-red-800 border-red-200"
+                                                        ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/30"
+                                                        : "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30"
                                                 }
                                             >
                                                 {data.data.dnsStatus}
@@ -137,8 +137,8 @@ export function LogDetailDialog({ logId, onClose }: Props) {
                                             <Badge
                                                 className={
                                                     data.data.sslValid
-                                                        ? "bg-green-100 text-green-800 border-green-200"
-                                                        : "bg-red-100 text-red-800 border-red-200"
+                                                        ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/30"
+                                                        : "bg-red-100 text-red-800 border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30"
                                                 }
                                             >
                                                 {data.data.sslValid ? "Valid" : "Invalid"}
@@ -182,11 +182,11 @@ export function LogDetailDialog({ logId, onClose }: Props) {
 
                         {/* Anomaly indicator */}
                         {data.data.isAnomaly && (
-                            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg">
+                                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
                                 <div className="text-sm">
-                                    <p className="font-semibold text-amber-900">Performance Anomaly Detected</p>
-                                    <p className="text-xs text-amber-800 mt-0.5">
+                                    <p className="font-semibold text-amber-900 dark:text-amber-300">Performance Anomaly Detected</p>
+                                    <p className="text-xs text-amber-800 dark:text-amber-400 mt-0.5">
                                         Response time was significantly slower than the 7-day baseline (z-score &gt; 2).
                                     </p>
                                 </div>
@@ -199,7 +199,7 @@ export function LogDetailDialog({ logId, onClose }: Props) {
                                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                     Error
                                 </p>
-                                <pre className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-lg text-xs overflow-x-auto whitespace-pre-wrap">
+                                <pre className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-800 dark:text-red-400 p-3 rounded-lg text-xs overflow-x-auto whitespace-pre-wrap">
                                     {data.data.errorMessage}
                                 </pre>
                             </div>
@@ -207,9 +207,9 @@ export function LogDetailDialog({ logId, onClose }: Props) {
 
                         {/* Healthy banner if no errors */}
                         {!data.data.errorMessage && data.data.status === "UP" && (
-                            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                <p className="text-sm text-green-900">
+                            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 rounded-lg">
+                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <p className="text-sm text-green-900 dark:text-green-300">
                                     Endpoint responded successfully — no errors detected.
                                 </p>
                             </div>
