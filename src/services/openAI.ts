@@ -9,6 +9,13 @@ export const OPENAI = new OpenAI({
 
 // ────────────────────────────────────────────────────────────────────────
 // In-memory caches (process-local; reset on cold start)
+//
+// NOTE (serverless): on Vercel each cron tick may be a fresh instance, so these
+// Maps do NOT persist across invocations. They still de-duplicate work *within*
+// a single run. The durable layers that DO survive cold starts are:
+//   - Root-cause analysis → persisted to Incident.aiAnalysis (see log router)
+//   - Rate limiting        → persisted to Setting.aiCallsCount (DB-backed below)
+// A cross-instance shared cache (e.g. Redis / Upstash) is the planned next step.
 // ────────────────────────────────────────────────────────────────────────
 
 const ALERT_TTL_MS = 30 * 60 * 1000; // 30 minutes

@@ -6,7 +6,7 @@ import {
 } from "@/lib/monitoring-service";
 import { decrypt } from "@/lib/enc-dec";
 import prisma from "@/lib/prisma";
-import { checkDNS, checkEndpoint, checkSSL, getContentHash } from "@/lib/log-script";
+import { checkDNS, checkEndpoint, checkSSL, getContentHash, hasContentChanged } from "@/lib/log-script";
 import { generateAlert } from "@/services/openAI";
 import { detectResponseTimeAnomaly } from "@/lib/anomaly-detector";
 
@@ -21,6 +21,9 @@ const UNSTABLE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SSL_THROTTLE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const UNSTABLE_THROTTLE_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DEGRADED_THROTTLE_MS = 6 * 60 * 60 * 1000; // 6 hours
+// Content changes are legitimate on dynamic pages (timestamps, tokens, ads), so
+// we throttle heavily — this signal is most useful for static / critical pages.
+const CONTENT_CHANGE_THROTTLE_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 type DispatchTarget = {
     email: string | null;
@@ -103,7 +106,9 @@ export async function runEndpointMonitoring() {
                         const aiAlertMessage = await generateAlert(
                             {
                                 status: "DOWN",
-                                httpCode: null,
+                                // 5xx failures carry a real status code (e.g. 503);
+                                // network errors (ENOTFOUND, ECONNREFUSED) have none.
+                                httpCode: "statusCode" in httpResult ? httpResult.statusCode : null,
                                 responseTime: httpResult.responseTime ?? null,
                                 errorMessage: (httpResult as any).reason ?? null,
                                 dnsStatus: dnsResult.dnsStatus,
@@ -168,6 +173,41 @@ export async function runEndpointMonitoring() {
                                 const subject = `⚠️ Performance degraded: ${endpoint.name} (${endpoint.project.projectName})`;
                                 await dispatch(monitoringService, endpoint, target, "DEGRADED", subject, message);
                             }
+                        }
+                    }
+                }
+
+                // ── 2b) Content change / defacement detection (UP only) ───────
+                if (httpResult.status === "UP" && contentResult.hash) {
+                    const previousHash = await monitoringService.getPreviousContentHash(
+                        endpoint.id,
+                        log.id
+                    );
+
+                    if (hasContentChanged(previousHash, contentResult.hash) && isNotificationsEnabled) {
+                        const recentlyNotified = await monitoringService.hasRecentNotification(
+                            endpoint.id,
+                            "CONTENT_CHANGED",
+                            CONTENT_CHANGE_THROTTLE_MS
+                        );
+                        if (!recentlyNotified) {
+                            console.log(`📝 Content changed for ${endpoint.name}`);
+                            const message =
+                                `👋 Hello ${endpoint.project.user.name},\n\n` +
+                                `📝 *Content Changed* on your project *${endpoint.project.projectName}*.\n\n` +
+                                `🔗 *Endpoint:* ${endpoint.name}\n` +
+                                `*URL:* ${endpoint.url}\n\n` +
+                                `The page content hash changed since the last check — the response body is different.\n\n` +
+                                `*Previous hash:* ${previousHash!.slice(0, 12)}…\n` +
+                                `*Current hash:* ${contentResult.hash.slice(0, 12)}…\n` +
+                                `*Checked at:* ${new Date().toLocaleString()}\n\n` +
+                                `💡 *Suggestions:*\n` +
+                                `- If you did not deploy or edit this page, investigate for possible defacement / compromise\n` +
+                                `- Confirm the change matches a recent, intended deploy\n` +
+                                `- For frequently-changing (dynamic) pages, this alert is expected and throttled to once per 12h\n\n` +
+                                `Thanks for staying on top of things!\n*Your Monitoring Team*`;
+                            const subject = `📝 Content changed: ${endpoint.name} (${endpoint.project.projectName})`;
+                            await dispatch(monitoringService, endpoint, target, "CONTENT_CHANGED", subject, message);
                         }
                     }
                 }

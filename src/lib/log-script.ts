@@ -76,6 +76,18 @@ export async function getContentHash(url: string): Promise<ContentResult> {
   }
 }
 
+// Content-change / defacement signal. Returns true only when we have a real
+// prior hash to compare against and it differs from the current one. The very
+// first observation (no previous hash) returns false so we never alert on an
+// endpoint's first-ever check. Missing current hash (unreachable) → false.
+export function hasContentChanged(
+  previousHash: string | null,
+  currentHash: string | null
+): boolean {
+  if (!previousHash || !currentHash) return false
+  return previousHash !== currentHash
+}
+
 // --------------------
 // 6️⃣ SSL CHECK (LEVEL 3)
 // --------------------

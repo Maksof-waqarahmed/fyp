@@ -11,6 +11,7 @@ Production-grade website uptime monitoring with **AI root cause analysis**, stat
 - 📈 **Statistical anomaly detection** — 7-day rolling baseline catches degradation before outage (no LLM, free)
 - 🚨 **Smart anti-spam alerts** — counter-based DOWN cadence (1st alert + every 4th)
 - 🔮 **Predictive warnings** — SSL expiry (14 days early) + unstable endpoint flagging
+- 📝 **Content-change / defacement detection** — SHA-256 body hash compared across checks (12h throttle)
 - 🧾 **Materialized incident table** — fast queries, no log replay
 - 📊 **Dashboard analytics** — uptime trends, response times, slowest endpoints, notification stats
 - 🌐 **Public status pages** — 90-day uptime visualization, custom slug
@@ -198,6 +199,23 @@ pnpm test:watch    # watch mode
 - [`.env.example`](.env.example) — env var reference
 
 ---
+
+## 🧭 Design Decisions & Trade-offs
+
+Deliberate engineering choices (not oversights) — worth knowing for evaluation:
+
+- **5-minute check floor** — Vercel Cron fires every 5 min and each tick carries serverless + OpenAI cost, so the minimum interval is 5 min. Sub-minute monitoring needs a dedicated always-on worker/queue (see Future Work).
+- **In-memory AI cache is best-effort** — the `Map` caches in `openAI.ts` de-duplicate work *within* a single cron run but reset on serverless cold starts. The durable layers that survive restarts are DB-backed: root-cause analysis (`Incident.aiAnalysis`) and the per-user rate limit (`Setting.aiCallsCount`). A shared Redis/Upstash cache is the planned upgrade.
+- **Single-region probing** — checks run from one region, so a network glitch between the checker and the target can produce a false DOWN. Consensus-based multi-region checking is Future Work.
+- **Statistical anomaly detection over ML model** — z-score on a rolling baseline is transparent, free, needs no training data, and runs on every UP check. The LLM is reserved for explanation, not core detection.
+
+## 🗺️ Future Work
+
+- **Multi-region checks** — probe from ≥3 regions, mark DOWN only on a 2-of-3 consensus to eliminate network false positives
+- **Redis/Upstash shared cache** — cross-instance AI + probe caching that survives serverless cold starts
+- **Sub-minute monitoring** — dedicated worker / queue (e.g. BullMQ) for 30s–60s intervals on critical endpoints
+- **Content-diff on change** — beyond the hash signal, store and diff the actual body to show *what* changed
+- **Trend-based prediction** — regression on downtime/SSL/response-time history for earlier warnings
 
 ## 🔗 References
 

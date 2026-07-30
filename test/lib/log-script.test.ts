@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyError, getStatusType } from "@/lib/log-script";
+import { classifyError, getStatusType, hasContentChanged } from "@/lib/log-script";
 
 describe("getStatusType", () => {
     it("classifies 2xx as UP", () => {
@@ -72,5 +72,27 @@ describe("classifyError", () => {
         expect(classifyError("string")).toBe("NETWORK_ERROR");
         expect(classifyError(null)).toBe("NETWORK_ERROR");
         expect(classifyError(undefined)).toBe("NETWORK_ERROR");
+    });
+});
+
+describe("hasContentChanged", () => {
+    it("returns true when a prior hash differs from the current one", () => {
+        expect(hasContentChanged("abc123", "def456")).toBe(true);
+    });
+
+    it("returns false when both hashes are identical", () => {
+        expect(hasContentChanged("abc123", "abc123")).toBe(false);
+    });
+
+    it("returns false on the first-ever check (no previous hash)", () => {
+        expect(hasContentChanged(null, "abc123")).toBe(false);
+    });
+
+    it("returns false when the current hash is missing (unreachable)", () => {
+        expect(hasContentChanged("abc123", null)).toBe(false);
+    });
+
+    it("returns false when both hashes are missing", () => {
+        expect(hasContentChanged(null, null)).toBe(false);
     });
 });

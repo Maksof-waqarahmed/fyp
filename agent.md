@@ -13,6 +13,7 @@ AI-powered website uptime monitoring system that:
 - Generates human-readable down alerts via OpenAI (cached + rate-limited)
 - Provides on-demand **AI Root Cause Analysis** with structured JSON output
 - Sends predictive warnings (SSL expiry, unstable endpoints) before they become outages
+- Detects content changes / defacement via SHA-256 body-hash comparison across checks (12h throttle)
 - Tracks incidents in a dedicated table (no log-replay computation)
 - Publishes status pages with 90-day uptime visualization
 
@@ -106,6 +107,9 @@ Sliding 1-hour window. Resets `aiCallsCount` when `aiCallsResetAt` falls outside
 │   ├─ if UP + responseTime not null:
 │   │     detectResponseTimeAnomaly() → mark Log + DEGRADED alert (6h throttle)
 │   │
+│   ├─ if UP + content hash differs from previous check:
+│   │     CONTENT_CHANGED alert (12h throttle)
+│   │
 │   ├─ if SSL valid + expires < 14 days:
 │   │     SSL_WARNING alert (7-day throttle)
 │   │
@@ -132,6 +136,7 @@ UP check     → count=0 → reset
 | DEGRADED | 6 hours |
 | SSL_WARNING | 7 days |
 | UNSTABLE | 24 hours |
+| CONTENT_CHANGED | 12 hours |
 
 Throttling is enforced via `MonitoringService.hasRecentNotification(endpointId, kind, sinceMs)` querying the Notification table.
 

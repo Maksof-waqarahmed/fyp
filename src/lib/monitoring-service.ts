@@ -100,7 +100,9 @@ export class MonitoringService {
         const log = await this.prisma.log.create({
             data: {
                 status: httpResult.status as HTTPStatus,
-                httpCode: !isDown ? (httpResult as EndpointUp).statusCode : null,
+                // Capture the status code whenever one exists — a 5xx is DOWN but
+                // still carries statusCode; only network errors lack one.
+                httpCode: "statusCode" in httpResult ? (httpResult as EndpointUp).statusCode : null,
                 responseTime: httpResult.responseTime ?? null,
                 errorMessage: isDown ? (httpResult as EndpointDown).reason : null,
                 dnsStatus: dnsResult.dnsStatus as DNSStatus,
@@ -140,7 +142,7 @@ export class MonitoringService {
                         triggerStatus: httpResult.status as HTTPStatus,
                         triggerLogId: log.id,
                         errorMessage: (httpResult as EndpointDown).reason ?? null,
-                        httpCode: null,
+                        httpCode: "statusCode" in httpResult ? (httpResult as EndpointUp).statusCode : null,
                     },
                 });
                 console.log(`🆘 New incident opened for ${endpoint.name}`);
@@ -174,6 +176,9 @@ export class MonitoringService {
         consecutiveDownCount: number
     ) {
         const now = new Date();
+        // 5-minute floor is a deliberate trade-off: Vercel Cron fires every 5 min
+        // and each tick has serverless invocation + OpenAI cost. Sub-minute checks
+        // would need a dedicated always-on worker / queue (see README → Future Work).
         const nextCheck = new Date(
             now.getTime() + Math.max(endpoint.checkInterval, 5) * 60 * 1000
         );
@@ -259,6 +264,24 @@ export class MonitoringService {
         return count > 0;
     }
 
+    // Most recent prior log's content hash (excluding the just-created log),
+    // used to detect content changes / defacement between consecutive checks.
+    async getPreviousContentHash(
+        endpointId: string,
+        excludeLogId: string
+    ): Promise<string | null> {
+        const prev = await this.prisma.log.findFirst({
+            where: {
+                endpointId,
+                id: { not: excludeLogId },
+                contentHash: { not: null },
+            },
+            orderBy: { checkedAt: "desc" },
+            select: { contentHash: true },
+        });
+        return prev?.contentHash ?? null;
+    }
+
     async countTransientFailures(endpointId: string, sinceMs: number): Promise<number> {
         const since = new Date(Date.now() - sinceMs);
         return this.prisma.log.count({
@@ -275,4 +298,5 @@ export type NotificationKind =
     | "DOWN"
     | "DEGRADED"
     | "SSL_WARNING"
-    | "UNSTABLE";
+    | "UNSTABLE"
+    | "CONTENT_CHANGED";
