@@ -148,6 +148,7 @@ Throttling is enforced via `MonitoringService.hasRecentNotification(endpointId, 
 - `/api/cron/run` (GET) authenticates via `Authorization: Bearer ${CRON_SECRET}`
 - Schedule defined in `vercel.json`: `*/5 * * * *`
 - `runtime = "nodejs"`, `maxDuration = 300`
+- Each tick runs `runEndpointMonitoring()` then `runDueSecurityScans()` (daily-gated per endpoint, ≤5 scans/tick, scan-only — AI triage stays manual)
 
 **Local dev:**
 - `pnpm cron` runs `src/services/cron.ts` (node-cron in-process)
@@ -271,10 +272,11 @@ pnpm add:ui <name>    # Shadcn component
 
 ## 🎓 Defense talking points
 
-1. **AI is more than a chat wrapper** — three distinct uses:
+1. **AI is more than a chat wrapper** — four distinct uses:
    - Generative (alert messages)
    - Diagnostic (root cause analysis with structured output)
    - Statistical (anomaly detection — not even an LLM, but explicit ML)
+   - Security triage (prioritizes scanner findings into a remediation plan — structured JSON)
 
 2. **Cost-aware AI** — two-tier caching (in-memory + DB-backed rate limit), graceful fallback to plain templates on limit
 
@@ -283,3 +285,5 @@ pnpm add:ui <name>    # Shadcn component
 4. **Production-ready architecture** — Vercel cron + serverless-compatible code path, encrypted secrets, type-safe end-to-end (tRPC + Zod), tested critical paths (Vitest)
 
 5. **Incident model is materialized** — query performance scales linearly with incident count, not log count
+
+6. **Security is a real domain, not a bolt-on** — a 7-category posture scanner (headers, TLS, exposed files, cookies, HTTPS enforcement, DNS/email, tech fingerprint) with a weighted A–F score, persisted history, and AI triage. Pure analyzers are unit-tested; network probes are isolated. See `src/lib/security-scanner.ts` + `security` tRPC router.

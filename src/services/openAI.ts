@@ -25,6 +25,7 @@ type CacheEntry<T> = { value: T; expiresAt: number };
 
 const alertCache = new Map<string, CacheEntry<string>>();
 const analysisCache = new Map<string, CacheEntry<RootCauseAnalysis>>();
+const securityCache = new Map<string, CacheEntry<SecurityTriage>>();
 
 function cacheGet<T>(map: Map<string, CacheEntry<T>>, key: string): T | null {
     const entry = map.get(key);
@@ -283,6 +284,99 @@ Return:
         return parsed;
     } catch (error) {
         console.error("Error analyzing incident:", error);
+        return null;
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// 3) Security posture triage (structured JSON, cached per-scan)
+// ────────────────────────────────────────────────────────────────────────
+
+export const SecurityTriageSchema = z.object({
+    overallRisk: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]),
+    summary: z.string(),
+    topRisks: z
+        .array(
+            z.object({
+                title: z.string(),
+                severity: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]),
+                impact: z.string(),
+                remediation: z.string(),
+            })
+        )
+        .min(1)
+        .max(5),
+    prioritizedActions: z.array(z.string()).min(1).max(6),
+});
+
+export type SecurityTriage = z.infer<typeof SecurityTriageSchema>;
+
+export type AnalyzeSecurityInput = {
+    endpoint: { name: string; url: string };
+    score: number;
+    grade: string;
+    failedFindings: Array<{ category: string; title: string; severity: string; detail: string }>;
+};
+
+export type AnalyzeSecurityOptions = {
+    scanId: string;
+    userId: string;
+    prisma: PrismaClient;
+};
+
+export async function analyzeSecurityPosture(
+    input: AnalyzeSecurityInput,
+    opts: AnalyzeSecurityOptions
+): Promise<SecurityTriage | null> {
+    const cacheKey = `security:${opts.scanId}`;
+
+    const cached = cacheGet(securityCache, cacheKey);
+    if (cached) {
+        console.log(`💾 security triage cache hit for ${cacheKey}`);
+        return cached;
+    }
+
+    const usage = await checkAndIncrementAiUsage(opts.prisma, opts.userId);
+    if (!usage.allowed) {
+        console.warn(`🚫 AI rate limit hit for user ${opts.userId} — security triage skipped`);
+        return null;
+    }
+
+    const systemPrompt = `You are a web application security analyst. Given the automated scan findings for a website, prioritize the real risks by exploitability and business impact — do NOT just restate every finding. Be concrete and actionable. Severity must reflect genuine exploitability, not the raw scanner label.`;
+
+    const userPrompt = `Triage the security posture of this endpoint and return structured JSON.
+
+**Endpoint:** ${input.endpoint.name} (${input.endpoint.url})
+**Automated score:** ${input.score}/100 (grade ${input.grade})
+
+**Failed checks:**
+${JSON.stringify(input.failedFindings, null, 2)}
+
+Return:
+- overallRisk: the single worst realistic risk level for this site
+- summary: one-line headline for a dashboard card
+- topRisks: up to 5, most dangerous first — each with a concrete impact and a specific remediation
+- prioritizedActions: an ordered fix list an operator should work through`;
+
+    try {
+        const response = await OPENAI.chat.completions.parse({
+            model: "gpt-4o-mini",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+            ],
+            temperature: 0.2,
+            max_tokens: 800,
+            response_format: zodResponseFormat(SecurityTriageSchema, "security_triage"),
+        });
+
+        const parsed = response.choices?.[0]?.message?.parsed ?? null;
+        if (parsed) {
+            cacheSet(securityCache, cacheKey, parsed, ANALYSIS_TTL_MS);
+        }
+        return parsed;
+    } catch (error) {
+        console.error("Error analyzing security posture:", error);
         return null;
     }
 }

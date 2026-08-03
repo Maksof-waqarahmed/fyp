@@ -3,6 +3,7 @@
 // Start manually with `pnpm cron`.
 import cron from "node-cron";
 import { runEndpointMonitoring } from "./run-monitoring";
+import { runDueSecurityScans } from "./security-scan-service";
 
 if (process.env.NODE_ENV === "production") {
     console.warn(
@@ -13,6 +14,8 @@ if (process.env.NODE_ENV === "production") {
 cron.schedule("*/5 * * * *", async () => {
     console.log("⏱ [local-dev] Running monitoring job...");
     await runEndpointMonitoring();
+    // Self-gated to once/24h per endpoint (small batch per tick).
+    await runDueSecurityScans();
 });
 
 console.log("🕒 Local cron scheduler started (every 5 min). Use Ctrl+C to stop.");

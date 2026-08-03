@@ -7,7 +7,8 @@ import {
   Settings2,
   SquareTerminal,
   ArrowDownNarrowWide,
-  FileChartLine
+  FileChartLine,
+  ShieldCheck
 } from "lucide-react"
 import * as React from "react"
 
@@ -58,6 +59,11 @@ const data = {
       title: "Incidents",
       url: "/dashboard/incidents",
       icon: ArrowDownNarrowWide,
+    },
+    {
+      title: "Security",
+      url: "/dashboard/security",
+      icon: ShieldCheck,
     },
     {
       title: "Status Pages",

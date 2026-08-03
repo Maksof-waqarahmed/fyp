@@ -1,6 +1,6 @@
-# AI-Powered Uptime Monitor
+# AI-Powered Uptime & Security Monitor
 
-Production-grade website uptime monitoring with **AI root cause analysis**, statistical anomaly detection, and predictive warnings — built on Next.js 16, Prisma 7, tRPC, and OpenAI.
+Production-grade website uptime monitoring with **AI root cause analysis**, statistical anomaly detection, predictive warnings, and an **AI-triaged security scanner** — built on Next.js 16, Prisma 7, tRPC, and OpenAI.
 
 ---
 
@@ -12,6 +12,8 @@ Production-grade website uptime monitoring with **AI root cause analysis**, stat
 - 🚨 **Smart anti-spam alerts** — counter-based DOWN cadence (1st alert + every 4th)
 - 🔮 **Predictive warnings** — SSL expiry (14 days early) + unstable endpoint flagging
 - 📝 **Content-change / defacement detection** — SHA-256 body hash compared across checks (12h throttle)
+- 🛡️ **Security posture scanner** — security headers, TLS/SSL depth, exposed sensitive files, cookie flags, HTTPS enforcement, SPF/DMARC/CAA, tech fingerprinting → weighted **A–F score**
+- 🧠 **AI vulnerability triage** — turns raw findings into a prioritized, plain-English remediation plan (structured JSON)
 - 🧾 **Materialized incident table** — fast queries, no log replay
 - 📊 **Dashboard analytics** — uptime trends, response times, slowest endpoints, notification stats
 - 🌐 **Public status pages** — 90-day uptime visualization, custom slug
@@ -199,6 +201,24 @@ pnpm test:watch    # watch mode
 - [`.env.example`](.env.example) — env var reference
 
 ---
+
+## 🛡️ Security Scanner
+
+On-demand, per-endpoint posture scan (`security` tRPC router → `src/lib/security-scanner.ts`). Seven categories, each producing pass/fail findings with a severity:
+
+| Category | Checks |
+|---|---|
+| Security Headers | HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
+| TLS / SSL | negotiated protocol (flags TLS 1.0/1.1), trust chain / self-signed |
+| Exposed Files | `/.env`, `/.git/config`, `/.aws/credentials`, backups… (200 + non-HTML only → avoids SPA false positives) |
+| Cookie Security | Secure / HttpOnly / SameSite on every Set-Cookie |
+| HTTPS Enforcement | HTTP→HTTPS redirect + HSTS |
+| DNS / Email | SPF, DMARC, CAA records |
+| Tech Fingerprint | `Server` / `X-Powered-By` disclosure + EOL PHP heuristic |
+
+A weighted penalty model (CRITICAL −40 … LOW −5) yields a **0–100 score** and an **A–F grade**, persisted to the `SecurityScan` table so history/trends survive restarts. **AI triage** (`analyzeSecurityPosture`) then prioritizes the failed findings into an ordered remediation plan — sharing the same cache + 50/hr rate-limit as the incident analyzer.
+
+Scans run two ways: **on-demand** (the "Run Scan" button) and **automatically** via the cron — `runDueSecurityScans()` re-scans each endpoint at most once per 24h, a max of 5 per tick so a burst never blows the serverless time budget. Auto-scan is scan-only; AI triage stays user-triggered to keep OpenAI cost bounded.
 
 ## 🧭 Design Decisions & Trade-offs
 

@@ -106,6 +106,7 @@ model Endpoint {
   logs                 Log[]
   notifications        Notification[]
   incidents            Incident[]
+  securityScans        SecurityScan[]
 
   @@unique([projectId, url])
   @@index([projectId])
@@ -190,6 +191,27 @@ model Incident {
 enum IncidentStatus {
   ONGOING
   RESOLVED
+}
+
+model SecurityScan {
+  id            String   @id @default(cuid())
+  endpointId    String
+  endpoint      Endpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  score         Int // 0-100 composite security posture
+  grade         String // A / B / C / D / F
+  headers       Json // security-header findings
+  tls           Json // TLS / SSL deep findings
+  exposedFiles  Json // exposed sensitive-path findings
+  cookies       Json // cookie-flag findings
+  httpsRedirect Json // HTTP->HTTPS redirect + HSTS findings
+  dnsEmail      Json // SPF / DMARC / CAA findings
+  techStack     Json // server-tech fingerprint + EOL flags
+  aiTriage      Json? // AI-prioritized vulnerability report
+  aiTriagedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([endpointId, createdAt])
+  @@map("security_scan")
 }
 
 model StatusPage {

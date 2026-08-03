@@ -1,4 +1,5 @@
 import { runEndpointMonitoring } from "@/services/run-monitoring";
+import { runDueSecurityScans } from "@/services/security-scan-service";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -24,6 +25,8 @@ export async function GET(req: Request) {
 
     try {
         await runEndpointMonitoring();
+        // Daily-gated per endpoint, small batch per tick — self-throttling.
+        await runDueSecurityScans();
         return NextResponse.json({
             ok: true,
             durationMs: Date.now() - startedAt,
