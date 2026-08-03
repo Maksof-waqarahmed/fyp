@@ -287,3 +287,5 @@ pnpm add:ui <name>    # Shadcn component
 5. **Incident model is materialized** — query performance scales linearly with incident count, not log count
 
 6. **Security is a real domain, not a bolt-on** — a 7-category posture scanner (headers, TLS, exposed files, cookies, HTTPS enforcement, DNS/email, tech fingerprint) with a weighted A–F score, persisted history, and AI triage. Pure analyzers are unit-tested; network probes are isolated. See `src/lib/security-scanner.ts` + `security` tRPC router.
+
+7. **Three distinct intelligence layers, not one** — (a) statistical anomaly detection (z-score), (b) predictive ML (linear-regression forecast + explainable weighted risk score in `src/lib/failure-predictor.ts`), and (c) the LLM (diagnosis/triage). The prediction layer is transparent and attributable — the opposite of a black-box wrapper.

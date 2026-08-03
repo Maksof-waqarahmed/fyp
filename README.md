@@ -11,6 +11,7 @@ Production-grade website uptime monitoring with **AI root cause analysis**, stat
 - 📈 **Statistical anomaly detection** — 7-day rolling baseline catches degradation before outage (no LLM, free)
 - 🚨 **Smart anti-spam alerts** — counter-based DOWN cadence (1st alert + every 4th)
 - 🔮 **Predictive warnings** — SSL expiry (14 days early) + unstable endpoint flagging
+- 🧠 **Predictive health scoring** — explainable failure-risk model (weighted signals) + response-time forecasting via linear regression (statistical, no LLM)
 - 📝 **Content-change / defacement detection** — SHA-256 body hash compared across checks (12h throttle)
 - 🛡️ **Security posture scanner** — security headers, TLS/SSL depth, exposed sensitive files, cookie flags, HTTPS enforcement, SPF/DMARC/CAA, tech fingerprinting → weighted **A–F score**
 - 🧠 **AI vulnerability triage** — turns raw findings into a prioritized, plain-English remediation plan (structured JSON)
@@ -201,6 +202,16 @@ pnpm test:watch    # watch mode
 - [`.env.example`](.env.example) — env var reference
 
 ---
+
+## 🧠 Predictive Health
+
+Per-endpoint failure-risk prediction (`prediction` tRPC router → `src/lib/failure-predictor.ts`) — **fully explainable, no LLM**:
+
+- **Least-squares linear regression** on recent UP samples → response-time trend + a 24h forecast
+- A **weighted risk model** turns real signals into a 0–100 score where every point is attributable to a named factor: recent failures (≤40), overall error rate (≤15), slowing response time (≤10), response-time spike vs baseline (≤15), active down streak (≤20), approaching SSL expiry (≤10), recent instability (≤10)
+- Score → `LOW / MEDIUM / HIGH / CRITICAL`, with the contributing factors surfaced in the UI so operators see **why** an endpoint is at risk
+
+Computed live from existing logs (no schema change, no AI cost). Pure math (`linearRegression`, `computeRiskScore`) is unit-tested; DB access is isolated in the orchestrator.
 
 ## 🛡️ Security Scanner
 
