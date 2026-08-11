@@ -12,7 +12,8 @@
     "db:push": "npx prisma db push",
     "db:generate": "npx prisma generate",
     "add:ui": "pnpm dlx shadcn@latest add ",
-    "cron": "tsx -r dotenv/config -r tsconfig-paths/register src/services/cron.ts"
+    "cron": "tsx -r dotenv/config -r tsconfig-paths/register src/services/cron.ts",
+    "demo:check": "tsx -r dotenv/config -r tsconfig-paths/register src/services/run-once.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -11,6 +11,12 @@ import {
 import { AlertStatus, DNSStatus, HTTPStatus, IncidentStatus } from "../../prisma/generated/prisma/enums";
 import { PrismaClient } from "../../prisma/generated/prisma/client";
 
+// PostgreSQL INT4 max. `Incident.downtimeMs` is an Int column, so an incident
+// left ongoing for longer than ~24.8 days would overflow it. Clamp to stay in
+// range (realistic outages never approach this; a stuck endpoint could).
+const MAX_INT4 = 2_147_483_647;
+const clampDowntime = (ms: number) => Math.min(Math.max(0, ms), MAX_INT4);
+
 export type EndpointRef = {
     id: string;
     name: string;
@@ -147,7 +153,7 @@ export class MonitoringService {
                 });
                 console.log(`🆘 New incident opened for ${endpoint.name}`);
             } else {
-                const downtimeMs = log.checkedAt.getTime() - ongoing.startedAt.getTime();
+                const downtimeMs = clampDowntime(log.checkedAt.getTime() - ongoing.startedAt.getTime());
                 await this.prisma.incident.update({
                     where: { id: ongoing.id },
                     data: { downtimeMs },
