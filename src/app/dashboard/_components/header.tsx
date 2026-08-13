@@ -1,6 +1,7 @@
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { RunCheckButton } from './run-check-button'
 import { serverSession, ServerSession } from '@/lib/auth-sever';
 import Image from 'next/image'
 
@@ -24,6 +25,7 @@ const Header = async () => {
                                 <p className="text-xs text-muted-foreground">Have a productive day</p>
                             </div>
                             <div className="flex items-center gap-3">
+                                <RunCheckButton />
                                 <ThemeToggle />
                                 <div className="h-10 w-10 rounded-full from-primary to-primary/80 flex items-center justify-center overflow-hidden border-2 border-primary">
                                     {profile && (

@@ -1,8 +1,28 @@
 import { createTRPCRouter, protectedProcedure } from "@/trpc/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { runEndpointMonitoring } from "@/services/run-monitoring";
 
 export const endpoint = createTRPCRouter({
+
+    // Manually trigger a monitoring pass for the signed-in user's endpoints.
+    // Forces them "due now" then runs the same engine the cron uses — lets the
+    // dashboard refresh on demand without waiting for the scheduled cron.
+    runChecksNow: protectedProcedure.mutation(async ({ ctx }) => {
+        const userId = ctx.session.user.id;
+
+        const due = await ctx.prisma.endpoint.updateMany({
+            where: { isDeleted: false, project: { userId, isDeleted: false } },
+            data: { nextCheckAt: new Date() },
+        });
+
+        if (due.count === 0) {
+            return { checked: 0, message: "No endpoints to check yet." };
+        }
+
+        await runEndpointMonitoring();
+        return { checked: due.count, message: `Checked ${due.count} endpoint(s).` };
+    }),
 
     addEndPoints: protectedProcedure
         .input(

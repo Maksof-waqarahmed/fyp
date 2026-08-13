@@ -3,6 +3,11 @@ import { createTRPCContext } from "@/trpc";
 import { appRouter } from "@/trpc/api/routes";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 
+// Node runtime + a longer budget so the manual "Run Check Now" mutation
+// (which runs a full monitoring pass) doesn't get cut off on serverless.
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 // function setCorsHeaders(res: Response) {
 //     res.headers.set("Access-Control-Allow-Origin", "*");
 //     res.headers.set("Access-Control-Request-Method", "*");
